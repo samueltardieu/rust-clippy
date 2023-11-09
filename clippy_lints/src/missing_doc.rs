@@ -214,7 +214,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..)
             | hir::ItemKind::TyAlias(..)
-            | hir::ItemKind::Union(..) => {},
+            | hir::ItemKind::Union(..) => {}
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)

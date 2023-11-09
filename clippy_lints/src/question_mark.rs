@@ -125,7 +125,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         cx.tcx
             .lang_items()
             .try_trait()
-            .map_or(false, |did| implements_trait(cx, init_ty, did, &[]))
+            .is_some_and(|did| implements_trait(cx, init_ty, did, &[]))
     }
 
     if let StmtKind::Let(LetStmt {
@@ -206,11 +206,12 @@ fn expr_return_none_or_err(
             sym::Result => path_to_local(expr).is_some() && path_to_local(expr) == path_to_local(cond_expr),
             _ => false,
         },
-        ExprKind::Call(call_expr, [arg]) => {
+        ExprKind::Call(call_expr, args_expr) => {
             if smbl == sym::Result
                 && let ExprKind::Path(QPath::Resolved(_, path)) = &call_expr.kind
                 && let Some(segment) = path.segments.first()
                 && let Some(err_sym) = err_sym
+                && let Some(arg) = args_expr.first()
                 && let ExprKind::Path(QPath::Resolved(_, arg_path)) = &arg.kind
                 && let Some(PathSegment { ident, .. }) = arg_path.segments.first()
             {
@@ -240,7 +241,7 @@ fn expr_return_none_or_err(
 fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
         && !is_else_clause(cx.tcx, expr)
-        && let ExprKind::MethodCall(segment, caller, [], _) = &cond.kind
+        && let ExprKind::MethodCall(segment, caller, ..) = &cond.kind
         && let caller_ty = cx.typeck_results().expr_ty(caller)
         && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then)
         && (is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block))
@@ -331,7 +332,7 @@ impl QuestionMark {
 
 fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
-        && let ExprKind::Call(callee, [_]) = expr.kind
+        && let ExprKind::Call(callee, _) = expr.kind
     {
         is_path_lang_item(cx, callee, LangItem::TryTraitFromOutput)
     } else {

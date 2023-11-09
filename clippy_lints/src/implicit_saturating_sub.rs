@@ -139,13 +139,6 @@ fn check_manual_check<'tcx>(
                 if_block,
                 else_block,
                 msrv,
-                matches!(
-                    clippy_utils::get_parent_expr(cx, expr),
-                    Some(Expr {
-                        kind: ExprKind::If(..),
-                        ..
-                    })
-                ),
             ),
             BinOpKind::Lt | BinOpKind::Le => check_gt(
                 cx,
@@ -156,13 +149,6 @@ fn check_manual_check<'tcx>(
                 if_block,
                 else_block,
                 msrv,
-                matches!(
-                    clippy_utils::get_parent_expr(cx, expr),
-                    Some(Expr {
-                        kind: ExprKind::If(..),
-                        ..
-                    })
-                ),
             ),
             _ => {},
         }
@@ -179,7 +165,6 @@ fn check_gt(
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
     msrv: &Msrv,
-    is_composited: bool,
 ) {
     if let Some(big_var) = Var::new(big_var)
         && let Some(little_var) = Var::new(little_var)
@@ -193,7 +178,6 @@ fn check_gt(
             if_block,
             else_block,
             msrv,
-            is_composited,
         );
     }
 }
@@ -222,7 +206,6 @@ fn check_subtraction(
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
     msrv: &Msrv,
-    is_composited: bool,
 ) {
     let if_block = peel_blocks(if_block);
     let else_block = peel_blocks(else_block);
@@ -243,7 +226,6 @@ fn check_subtraction(
             else_block,
             if_block,
             msrv,
-            is_composited,
         );
         return;
     }
@@ -260,18 +242,13 @@ fn check_subtraction(
                 && let Some(little_var_snippet) = snippet_opt(cx, little_var.span)
                 && (!is_in_const_context(cx) || msrv.meets(msrvs::SATURATING_SUB_CONST))
             {
-                let sugg = format!(
-                    "{}{big_var_snippet}.saturating_sub({little_var_snippet}){}",
-                    if is_composited { "{ " } else { "" },
-                    if is_composited { " }" } else { "" }
-                );
                 span_lint_and_sugg(
                     cx,
                     IMPLICIT_SATURATING_SUB,
                     expr_span,
                     "manual arithmetic check found",
                     "replace it with",
-                    sugg,
+                    format!("{big_var_snippet}.saturating_sub({little_var_snippet})"),
                     Applicability::MachineApplicable,
                 );
             }

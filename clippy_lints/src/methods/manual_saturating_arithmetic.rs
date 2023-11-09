@@ -68,7 +68,8 @@ enum MinMax {
 
 fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
     // `T::max_value()` `T::min_value()` inherent methods
-    if let hir::ExprKind::Call(func, []) = &expr.kind
+    if let hir::ExprKind::Call(func, args) = &expr.kind
+        && args.is_empty()
         && let hir::ExprKind::Path(hir::QPath::TypeRelative(_, segment)) = &func.kind
     {
         match segment.ident.as_str() {

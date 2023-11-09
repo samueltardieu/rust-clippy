@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
                     check_arguments(
                         cx,
-                        &mut arguments.iter(),
+                        arguments.iter().collect(),
                         cx.typeck_results().expr_ty(fn_expr),
                         &rustc_hir_pretty::qpath_to_string(&cx.tcx, path),
                         "function",
@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args);
                 check_arguments(
                     cx,
-                    &mut iter::once(receiver).chain(arguments.iter()),
+                    iter::once(receiver).chain(arguments.iter()).collect(),
                     method_type,
                     path.ident.as_str(),
                     "method",
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
 
 fn check_arguments<'tcx>(
     cx: &LateContext<'tcx>,
-    arguments: &mut dyn Iterator<Item = &'tcx Expr<'tcx>>,
+    arguments: Vec<&Expr<'_>>,
     type_definition: Ty<'tcx>,
     name: &str,
     fn_kind: &str,

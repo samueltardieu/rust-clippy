@@ -52,8 +52,8 @@ impl LateLintPass<'_> for ManualStringNew {
         }
 
         match expr.kind {
-            ExprKind::Call(func, [arg]) => {
-                parse_call(cx, expr.span, func, arg);
+            ExprKind::Call(func, args) => {
+                parse_call(cx, expr.span, func, args);
             },
             ExprKind::MethodCall(path_segment, receiver, ..) => {
                 parse_method_call(cx, expr.span, path_segment, receiver);
@@ -93,15 +93,20 @@ fn parse_method_call(cx: &LateContext<'_>, span: Span, path_segment: &PathSegmen
     let method_arg_kind = &receiver.kind;
     if ["to_string", "to_owned", "into"].contains(&ident) && is_expr_kind_empty_str(method_arg_kind) {
         warn_then_suggest(cx, span);
-    } else if let ExprKind::Call(func, [arg]) = method_arg_kind {
+    } else if let ExprKind::Call(func, args) = method_arg_kind {
         // If our first argument is a function call itself, it could be an `unwrap`-like function.
         // E.g. String::try_from("hello").unwrap(), TryFrom::try_from("").expect("hello"), etc.
-        parse_call(cx, span, func, arg);
+        parse_call(cx, span, func, args);
     }
 }
 
 /// Tries to parse an expression as a function call, emitting the warning if necessary.
-fn parse_call(cx: &LateContext<'_>, span: Span, func: &Expr<'_>, arg: &Expr<'_>) {
+fn parse_call(cx: &LateContext<'_>, span: Span, func: &Expr<'_>, args: &[Expr<'_>]) {
+    if args.len() != 1 {
+        return;
+    }
+
+    let arg_kind = &args[0].kind;
     if let ExprKind::Path(qpath) = &func.kind {
         // String::from(...) or String::try_from(...)
         if let QPath::TypeRelative(ty, path_seg) = qpath
@@ -110,13 +115,13 @@ fn parse_call(cx: &LateContext<'_>, span: Span, func: &Expr<'_>, arg: &Expr<'_>)
             && let QPath::Resolved(_, path) = qpath
             && let [path_seg] = path.segments
             && path_seg.ident.name == sym::String
-            && is_expr_kind_empty_str(&arg.kind)
+            && is_expr_kind_empty_str(arg_kind)
         {
             warn_then_suggest(cx, span);
         } else if let QPath::Resolved(_, path) = qpath {
             // From::from(...) or TryFrom::try_from(...)
             if let [path_seg1, path_seg2] = path.segments
-                && is_expr_kind_empty_str(&arg.kind)
+                && is_expr_kind_empty_str(arg_kind)
                 && ((path_seg1.ident.name == sym::From && path_seg2.ident.name == sym::from)
                     || (path_seg1.ident.name == sym::TryFrom && path_seg2.ident.name == sym::try_from))
             {

@@ -253,17 +253,18 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
 
-        if let ExprKind::Call(fun, [bytes_arg]) = e.kind
+        if let ExprKind::Call(fun, args) = e.kind
             // Find std::str::converts::from_utf8
             && is_path_diagnostic_item(cx, fun, sym::str_from_utf8)
 
             // Find string::as_bytes
-            && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind
+            && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = args[0].kind
             && let ExprKind::Index(left, right, _) = args.kind
             && let (method_names, expressions, _) = method_calls(left, 1)
-            && method_names == [sym!(as_bytes)]
+            && method_names.len() == 1
             && expressions.len() == 1
             && expressions[0].1.is_empty()
+            && method_names[0] == sym!(as_bytes)
 
             // Check for slicer
             && let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), _, _) = right.kind
@@ -392,7 +393,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             return;
         }
 
-        if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
+        if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
             && let ty::Ref(_, ty, ..) = ty.kind()
@@ -448,7 +449,7 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
             return;
         }
 
-        if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
+        if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
             && is_type_lang_item(cx, ty, LangItem::String)

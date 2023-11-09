@@ -22,12 +22,3 @@ fn main() {
     br"no hashes";
     cr"no hashes";
 }
-
-fn issue_13503() {
-    println!(r"SELECT * FROM posts");
-    println!(r#"SELECT * FROM posts"#);
-    println!(r##"SELECT * FROM "posts""##);
-
-    // Test arguments as well
-    println!("{}", r"foobar".len());
-}

@@ -27,5 +27,5 @@ mod metadata;
 pub mod msrvs;
 pub mod types;
 
-pub use conf::{Conf, get_configuration_metadata, lookup_conf_file, sanitize_explanation};
+pub use conf::{Conf, get_configuration_metadata, lookup_conf_file};
 pub use metadata::ClippyConfiguration;

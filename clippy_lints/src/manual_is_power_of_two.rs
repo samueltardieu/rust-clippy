@@ -11,12 +11,10 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for expressions like `x.count_ones() == 1` or `x & (x - 1) == 0`, with x and unsigned integer, which may be manual
+    /// Checks for expressions like `x.count_ones() == 1` or `x & (x - 1) == 0`, with x and unsigned integer, which are manual
     /// reimplementations of `x.is_power_of_two()`.
-    ///
     /// ### Why is this bad?
     /// Manual reimplementations of `is_power_of_two` increase code complexity for little benefit.
-    ///
     /// ### Example
     /// ```no_run
     /// let a: u32 = 4;
@@ -29,7 +27,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.82.0"]
     pub MANUAL_IS_POWER_OF_TWO,
-    pedantic,
+    complexity,
     "manually reimplementing `is_power_of_two`"
 }
 
@@ -43,7 +41,7 @@ impl LateLintPass<'_> for ManualIsPowerOfTwo {
             && bin_op.node == BinOpKind::Eq
         {
             // a.count_ones() == 1
-            if let ExprKind::MethodCall(method_name, reciever, [], _) = left.kind
+            if let ExprKind::MethodCall(method_name, reciever, _, _) = left.kind
                 && method_name.ident.as_str() == "count_ones"
                 && let &Uint(_) = cx.typeck_results().expr_ty(reciever).kind()
                 && check_lit(right, 1)
@@ -52,7 +50,7 @@ impl LateLintPass<'_> for ManualIsPowerOfTwo {
             }
 
             // 1 == a.count_ones()
-            if let ExprKind::MethodCall(method_name, reciever, [], _) = right.kind
+            if let ExprKind::MethodCall(method_name, reciever, _, _) = right.kind
                 && method_name.ident.as_str() == "count_ones"
                 && let &Uint(_) = cx.typeck_results().expr_ty(reciever).kind()
                 && check_lit(left, 1)
