@@ -100,6 +100,7 @@ mod default_constructed_unit_structs;
 mod default_instead_of_iter_empty;
 mod default_numeric_fallback;
 mod default_union_representation;
+mod deferred_const_shadow;
 mod dereference;
 mod derivable_impls;
 mod derive;
@@ -872,6 +873,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(byte_char_slices::ByteCharSlice)),
         Box::new(|_| Box::new(manual_assert_eq::ManualAssertEq)),
         Box::new(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait)),
+        Box::new(|_| Box::<deferred_const_shadow::DeferredConstShadow<'_>>::default()),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);
