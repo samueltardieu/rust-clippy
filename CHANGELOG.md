@@ -7147,6 +7147,7 @@ Released 2018-09-13
 [`default_numeric_fallback`]: https://clippy.rust-lang.org/main/index.html#default_numeric_fallback
 [`default_trait_access`]: https://clippy.rust-lang.org/main/index.html#default_trait_access
 [`default_union_representation`]: https://clippy.rust-lang.org/main/index.html#default_union_representation
+[`deferred_const_shadow`]: https://clippy.rust-lang.org/main/index.html#deferred_const_shadow
 [`definition_in_module_root`]: https://clippy.rust-lang.org/main/index.html#definition_in_module_root
 [`deprecated_attributes_without_note`]: https://clippy.rust-lang.org/main/index.html#deprecated_attributes_without_note
 [`deprecated_attributes_without_since`]: https://clippy.rust-lang.org/main/index.html#deprecated_attributes_without_since
