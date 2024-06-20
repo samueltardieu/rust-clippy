@@ -107,6 +107,7 @@ mod default_constructed_unit_structs;
 mod default_instead_of_iter_empty;
 mod default_numeric_fallback;
 mod default_union_representation;
+mod deferred_const_shadow;
 mod definition_in_module_root;
 mod dereference;
 mod derivable_impls;
@@ -875,6 +876,7 @@ rustc_lint::late_lint_methods!(
         NonnullUncheckedOnBoxPtr: nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr = nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr::new(conf),
         NeedlessNonzeroGet: needless_nonzero_get::NeedlessNonzeroGet = needless_nonzero_get::NeedlessNonzeroGet::new(conf),
         UnitAsImplTrait: unit_as_impl_trait::UnitAsImplTrait = unit_as_impl_trait::UnitAsImplTrait,
+        DeferredConstShadow: deferred_const_shadow::DeferredConstShadow<'tcx> = deferred_const_shadow::DeferredConstShadow::default(),
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );
