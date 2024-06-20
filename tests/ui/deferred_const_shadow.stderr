@@ -1,0 +1,21 @@
+error: using a shadowing constant defined later in the same scope
+  --> tests/ui/deferred_const_shadow.rs:8:16
+   |
+LL |     println!("{MESSAGE}");
+   |                ^^^^^^^
+   |
+note: this constant is shadowed in the current scope and will not be used
+  --> tests/ui/deferred_const_shadow.rs:5:1
+   |
+LL | const MESSAGE: &str = "🦀";
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: this constant is used earlier in the scope and should be declared before it is referenced
+  --> tests/ui/deferred_const_shadow.rs:10:5
+   |
+LL |     const MESSAGE: &str = "Hello Rust!";
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::deferred-const-shadow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deferred_const_shadow)]`
+
+error: aborting due to 1 previous error
+
