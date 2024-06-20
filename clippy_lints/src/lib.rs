@@ -103,6 +103,7 @@ mod default_constructed_unit_structs;
 mod default_instead_of_iter_empty;
 mod default_numeric_fallback;
 mod default_union_representation;
+mod deferred_const_shadow;
 mod dereference;
 mod derivable_impls;
 mod derive;
@@ -863,6 +864,7 @@ rustc_lint::late_lint_methods!(
         WithCapacityZero: with_capacity_zero::WithCapacityZero = with_capacity_zero::WithCapacityZero,
         RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
         UnitAsImplTrait: unit_as_impl_trait::UnitAsImplTrait = unit_as_impl_trait::UnitAsImplTrait,
+        DeferredConstShadow: deferred_const_shadow::DeferredConstShadow<'tcx> = deferred_const_shadow::DeferredConstShadow::default(),
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );
