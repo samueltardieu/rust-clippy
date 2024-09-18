@@ -154,6 +154,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::else_if_without_else::ELSE_IF_WITHOUT_ELSE_INFO,
     crate::empty_drop::EMPTY_DROP_INFO,
     crate::empty_enum::EMPTY_ENUM_INFO,
+    crate::empty_statement::EMPTY_STATEMENT_INFO,
     crate::empty_with_brackets::EMPTY_ENUM_VARIANTS_WITH_BRACKETS_INFO,
     crate::empty_with_brackets::EMPTY_STRUCTS_WITH_BRACKETS_INFO,
     crate::endian_bytes::BIG_ENDIAN_BYTES_INFO,

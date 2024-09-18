@@ -122,6 +122,7 @@ mod duplicate_mod;
 mod else_if_without_else;
 mod empty_drop;
 mod empty_enum;
+mod empty_statement;
 mod empty_with_brackets;
 mod endian_bytes;
 mod entry;
@@ -942,5 +943,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
     store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
+    store.register_late_pass(|_| Box::new(empty_statement::EmptyStatement));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
