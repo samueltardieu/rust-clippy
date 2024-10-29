@@ -1,7 +1,9 @@
+cargo-features = ["edition2024"]
+
 [package]
 name = "clippy_utils"
 version = "0.1.84"
-edition = "2021"
+edition = "2024"
 publish = false
 
 [dependencies]
