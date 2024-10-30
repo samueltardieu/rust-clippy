@@ -57,12 +57,19 @@ jobs:
         include:
         - os: ubuntu-latest
           host: x86_64-unknown-linux-gnu
+          edition: 2021
+        - os: ubuntu-latest
+          host: x86_64-unknown-linux-gnu
+          edition: 2024
         - os: ubuntu-latest
           host: i686-unknown-linux-gnu
+          edition: 2021
         - os: windows-latest
           host: x86_64-pc-windows-msvc
+          edition: 2021
         - os: macos-13
           host: x86_64-apple-darwin
+          edition: 2021
 
     runs-on: ${{ matrix.os }}
 
@@ -78,6 +85,16 @@ jobs:
         sudo dpkg --add-architecture i386
         sudo apt-get update
         sudo apt-get install gcc-multilib zlib1g-dev:i386
+
+    - name: Select Rust 2024 edition
+      if: matrix.edition == 2024
+      run: |
+        for i in clippy_config clippy_dev clippy_lints clippy_utils lintcheck; do
+          sed -i \
+            -e '1icargo-features = ["edition2024"]' \
+            -e 's/edition = "2021"/edition = "2024"/' \
+            $i/Cargo.toml
+        done
 
     - name: Install toolchain
       run: |

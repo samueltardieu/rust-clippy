@@ -60,12 +60,14 @@ mod manual_ok_or;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod manual_try_fold;
+mod map_all_any_identity;
 mod map_clone;
 mod map_collect_result_unit;
 mod map_err_ignore;
 mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
+mod map_with_unused_argument_over_ranges;
 mod mut_mutex_lock;
 mod needless_as_bytes;
 mod needless_character_iteration;
@@ -4168,28 +4170,87 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+   /// ### What it does
+   /// It detects useless calls to `str::as_bytes()` before calling `len()` or `is_empty()`.
+   ///
+   /// ### Why is this bad?
+   /// The `len()` and `is_empty()` methods are also directly available on strings, and they
+   /// return identical results. In particular, `len()` on a string returns the number of
+   /// bytes.
+   ///
+   /// ### Example
+   /// ```
+   /// let len = "some string".as_bytes().len();
+   /// let b = "some string".as_bytes().is_empty();
+   /// ```
+   /// Use instead:
+   /// ```
+   /// let len = "some string".len();
+   /// let b = "some string".is_empty();
+   /// ```
+   #[clippy::version = "1.84.0"]
+   pub NEEDLESS_AS_BYTES,
+   complexity,
+   "detect useless calls to `as_bytes()`"
+}
+
+declare_clippy_lint! {
     /// ### What it does
-    /// It detects useless calls to `str::as_bytes()` before calling `len()` or `is_empty()`.
+    /// Checks for usage of `.map(…)`, followed by `.all(identity)` or `.any(identity)`.
     ///
     /// ### Why is this bad?
-    /// The `len()` and `is_empty()` methods are also directly available on strings, and they
-    /// return identical results. In particular, `len()` on a string returns the number of
-    /// bytes.
+    /// The `.all(…)` or `.any(…)` methods can be called directly in place of `.map(…)`.
     ///
     /// ### Example
     /// ```
-    /// let len = "some string".as_bytes().len();
-    /// let b = "some string".as_bytes().is_empty();
+    /// # let mut v = [""];
+    /// let e1 = v.iter().map(|s| s.is_empty()).all(|a| a);
+    /// let e2 = v.iter().map(|s| s.is_empty()).any(std::convert::identity);
     /// ```
     /// Use instead:
     /// ```
-    /// let len = "some string".len();
-    /// let b = "some string".is_empty();
+    /// # let mut v = [""];
+    /// let e1 = v.iter().all(|s| s.is_empty());
+    /// let e2 = v.iter().any(|s| s.is_empty());
     /// ```
     #[clippy::version = "1.84.0"]
-    pub NEEDLESS_AS_BYTES,
+    pub MAP_ALL_ANY_IDENTITY,
     complexity,
-    "detect useless calls to `as_bytes()`"
+    "combine `.map(_)` followed by `.all(identity)`/`.any(identity)` into a single call"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `Iterator::map` over ranges without using the parameter which
+    /// could be more clearly expressed using `std::iter::repeat(...).take(...)`
+    /// or `std::iter::repeat_n`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// It expresses the intent more clearly to `take` the correct number of times
+    /// from a generating function than to apply a closure to each number in a
+    /// range only to discard them.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// let random_numbers : Vec<_> = (0..10).map(|_| { 3 + 1 }).collect();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let f : Vec<_> = std::iter::repeat( 3 + 1 ).take(10).collect();
+    /// ```
+    ///
+    /// ### Known Issues
+    ///
+    /// This lint may suggest replacing a `Map<Range>` with a `Take<RepeatWith>`.
+    /// The former implements some traits that the latter does not, such as
+    /// `DoubleEndedIterator`.
+    #[clippy::version = "1.84.0"]
+    pub MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
+    restriction,
+    "map of a trivial closure (not dependent on parameter) over a range"
 }
 
 pub struct Methods {
@@ -4354,6 +4415,8 @@ impl_lint_pass!(Methods => [
     MANUAL_INSPECT,
     UNNECESSARY_MIN_OR_MAX,
     NEEDLESS_AS_BYTES,
+    MAP_ALL_ANY_IDENTITY,
+    MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4561,15 +4624,21 @@ impl Methods {
                 ("all", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     needless_character_iteration::check(cx, expr, recv, arg, true);
-                    if let Some(("cloned", recv2, [], _, _)) = method_call(recv) {
-                        iter_overeager_cloned::check(
-                            cx,
-                            expr,
-                            recv,
-                            recv2,
-                            iter_overeager_cloned::Op::NeedlessMove(arg),
-                            false,
-                        );
+                    match method_call(recv) {
+                        Some(("cloned", recv2, [], _, _)) => {
+                            iter_overeager_cloned::check(
+                                cx,
+                                expr,
+                                recv,
+                                recv2,
+                                iter_overeager_cloned::Op::NeedlessMove(arg),
+                                false,
+                            );
+                        },
+                        Some(("map", _, [map_arg], _, map_call_span)) => {
+                            map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "all");
+                        },
+                        _ => {},
                     }
                 },
                 ("and_then", [arg]) => {
@@ -4597,6 +4666,9 @@ impl Methods {
                                 && let [param] = body.params =>
                         {
                             string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                        },
+                        Some(("map", _, [map_arg], _, map_call_span)) => {
+                            map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");
                         },
                         _ => {},
                     }
@@ -4840,6 +4912,7 @@ impl Methods {
                     if name == "map" {
                         unused_enumerate_index::check(cx, expr, recv, m_arg);
                         map_clone::check(cx, expr, recv, m_arg, &self.msrv);
+                        map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, &self.msrv, span);
                         match method_call(recv) {
                             Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) => {
                                 iter_kv_map::check(cx, map_name, expr, recv2, m_arg, &self.msrv);
