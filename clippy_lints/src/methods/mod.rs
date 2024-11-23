@@ -3969,7 +3969,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// In the aformentioned cases it is not necessary to call `min()` or `max()`
+    /// In the aforementioned cases it is not necessary to call `min()` or `max()`
     /// to compare values, it may even cause confusion.
     ///
     /// ### Example
@@ -4982,6 +4982,10 @@ impl Methods {
                     }
                     map_identity::check(cx, expr, recv, m_arg, name, span);
                     manual_inspect::check(cx, expr, m_arg, name, span, &self.msrv);
+                    crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
+                },
+                ("map_break" | "map_continue", [m_arg]) => {
+                    crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
                 },
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
