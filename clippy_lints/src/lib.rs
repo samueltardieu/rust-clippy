@@ -375,6 +375,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_pin;
@@ -874,6 +875,7 @@ rustc_lint::late_lint_methods!(
         BufreaderStdin: bufreader_stdin::BufreaderStdin = bufreader_stdin::BufreaderStdin::new(),
         IfsAsLogicalOps: ifs_as_logical_ops::IfsAsLogicalOps = ifs_as_logical_ops::IfsAsLogicalOps,
         UndocumentedMayPanicCall: undocumented_may_panic_call::UndocumentedMayPanicCall = undocumented_may_panic_call::UndocumentedMayPanicCall::new(tcx, conf),
+        UnitAsImplTrait: unit_as_impl_trait::UnitAsImplTrait = unit_as_impl_trait::UnitAsImplTrait,
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );
