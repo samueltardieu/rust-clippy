@@ -463,6 +463,9 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(copy_then_borrow_mut)]
+    check_copy_then_borrow_mut_in_test: bool = true,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,

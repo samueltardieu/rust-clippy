@@ -414,6 +414,16 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 * [`cargo_common_metadata`](https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata)
 
 
+## `check-copy-then-borrow-mut-in-test`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`copy_then_borrow_mut`](https://rust-lang.github.io/rust-clippy/master/index.html#copy_then_borrow_mut)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
