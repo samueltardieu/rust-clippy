@@ -50,6 +50,16 @@ fn main() {
         //~^ ERROR: it looks like the same item is being pushed into this Vec
     }
 
+    #[clippy::msrv = "1.81"]
+    fn older_msrv() {
+        let mut vec = Vec::new();
+        let item = VALUE;
+        for _ in 0..20 {
+            vec.push(item);
+            //~^ ERROR: it looks like the same item is being pushed into this Vec
+        }
+    }
+
     // ** non-linted cases **
     let mut spaces = Vec::with_capacity(10);
     for _ in 0..10 {
