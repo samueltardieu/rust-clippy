@@ -309,6 +309,7 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
     cx.tcx.lang_items().get(item) == Some(did)
 }
 
+/// Checks if `expr` is an empty block or an empty tuple.
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
         expr.kind,
@@ -2401,6 +2402,24 @@ pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>
         }
     }
     expr
+}
+
+/// Returns a `Vec` of `Expr`s containing `AddrOf` operators (`&`) or deref operators (`*`) of a
+/// given expression.
+pub fn get_ref_operators<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Vec<&'hir Expr<'hir>> {
+    let mut operators = Vec::new();
+    peel_hir_expr_while(expr, |expr| match expr.kind {
+        ExprKind::AddrOf(_, _, e) => {
+            operators.push(expr);
+            Some(e)
+        },
+        ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_ref() => {
+            operators.push(expr);
+            Some(e)
+        },
+        _ => None,
+    });
+    operators
 }
 
 pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
