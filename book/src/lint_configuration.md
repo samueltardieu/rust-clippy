@@ -462,6 +462,16 @@ fn main() {
 * [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
 
 
+## `check-mutable-borrow-of-copy-in-tests`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`mutable_borrow_of_copy`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_borrow_of_copy)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
@@ -555,7 +565,7 @@ default configuration of Clippy. By default, any configuration will replace the 
 * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
 * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
 
-**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "MHz", "GHz", "THz", "AccessKit", "CoAP", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "PowerPC", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "NixOS", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
+**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "MHz", "GHz", "THz", "AccessKit", "CoAP", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "InfiniBand", "RoCE", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "PowerPC", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "NixOS", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
 
 ---
 **Affected lints:**
