@@ -469,6 +469,10 @@ define_Conf! {
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
     cognitive_complexity_threshold: u64 = 25,
+    /// Whether `if let` chains should be collapsed. This requires the use of the unstable
+    /// `let_chains` rustc feature.
+    #[lints(collapsible_if)]
+    collapse_let_chains: bool = false,
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
@@ -623,6 +627,7 @@ define_Conf! {
         manual_hash_one,
         manual_is_ascii_check,
         manual_let_else,
+        manual_midpoint,
         manual_non_exhaustive,
         manual_option_as_slice,
         manual_pattern_char_comparison,

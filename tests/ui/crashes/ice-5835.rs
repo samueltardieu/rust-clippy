@@ -1,10 +1,7 @@
 #[rustfmt::skip]
 pub struct Foo {
+    //~v tabs_in_doc_comments
     /// 位	
-    //~^ tabs_in_doc_comments
-    //~| empty_line_after_doc_comments
-
-
     ///   ^ Do not remove this tab character.
     ///   It was required to trigger the ICE.
     pub bar: u8,

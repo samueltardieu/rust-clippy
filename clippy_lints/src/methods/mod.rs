@@ -54,6 +54,7 @@ mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
 mod manual_c_str_literals;
+mod manual_contains;
 mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
@@ -112,6 +113,7 @@ mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
+mod swap_with_temporary;
 mod type_id_on_box;
 mod unbuffered_bytes;
 mod uninit_assumed_init;
@@ -4434,6 +4436,59 @@ declare_clippy_lint! {
     "calling .bytes() is very inefficient when data is not in memory"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
+    ///
+    /// ### Why is this bad?
+    /// `contains()` is more concise and idiomatic, sometimes more fast.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///    values.iter().any(|&v| v == 10)
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///    values.contains(&10)
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_CONTAINS,
+    perf,
+    "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `std::mem::swap` with temporary values.
+    ///
+    /// ### Why is this bad?
+    /// Storing a new value in place of a temporary value which will
+    /// be dropped right after the `swap` is inefficient. The same
+    /// result can be achieved by using an assignment, or dropping
+    /// the swap arguments.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     std::mem::swap(s, &mut String::from("replaced"));
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     *s = String::from("replaced");
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub SWAP_WITH_TEMPORARY,
+    complexity,
+    "detect swap with a temporary value"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4609,17 +4664,20 @@ impl_lint_pass!(Methods => [
     SLICED_STRING_AS_BYTES,
     RETURN_AND_THEN,
     UNBUFFERED_BYTES,
+    MANUAL_CONTAINS,
+    SWAP_WITH_TEMPORARY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
 pub fn method_call<'tcx>(
     recv: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
-    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
-        if !args.iter().any(|e| e.span.from_expansion()) && !receiver.span.from_expansion() {
-            let name = path.ident.name.as_str();
-            return Some((name, receiver, args, path.ident.span, call_span));
-        }
+    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind
+        && !args.iter().any(|e| e.span.from_expansion())
+        && !receiver.span.from_expansion()
+    {
+        let name = path.ident.name.as_str();
+        return Some((name, receiver, args, path.ident.span, call_span));
     }
     None
 }
@@ -4638,6 +4696,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, &self.msrv);
+                swap_with_temporary::check(cx, expr, func, args);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -4865,6 +4924,9 @@ impl Methods {
                         },
                         Some(("map", _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");
+                        },
+                        Some(("iter", iter_recv, ..)) => {
+                            manual_contains::check(cx, expr, iter_recv, arg);
                         },
                         _ => {},
                     }
