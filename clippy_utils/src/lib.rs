@@ -1,4 +1,6 @@
 #![feature(box_patterns)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(macro_metavar_expr)]
 #![feature(rustc_private)]
 #![feature(unwrap_infallible)]
@@ -2385,8 +2387,7 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
         && let Res::Def(_, def_id) = path.res
     {
-        #[allow(deprecated)]
-        return cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr);
+        return find_attr!(cx.tcx, def_id, CfgTrace(..) | CfgAttrTrace);
     }
     false
 }
