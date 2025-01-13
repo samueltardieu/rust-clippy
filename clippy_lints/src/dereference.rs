@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{implements_trait, is_manually_drop};
+use clippy_utils::ty::{adjust_derefs_manually_drop, implements_trait, is_manually_drop};
 use clippy_utils::{
     DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local,
     peel_middle_ty_refs,
 };
-use core::mem;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -707,14 +706,6 @@ fn try_parse_ref_op<'tcx>(
     ))
 }
 
-// Checks if the adjustments contains a deref of `ManuallyDrop<_>`
-fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
-    adjustments.iter().any(|a| {
-        let ty = mem::replace(&mut ty, a.target);
-        matches!(a.kind, Adjust::Deref(Some(ref op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
-    })
-}
-
 // Checks whether the type for a deref call actually changed the type, not just the mutability of
 // the reference.
 fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
@@ -986,6 +977,15 @@ fn report<'tcx>(
             );
         },
         State::DerefedBorrow(state) => {
+            // Do not suggest removing a non-mandatory `&` in `&*rawptr` in an `unside` context,
+            // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
+                && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
+                && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()
+            {
+                return;
+            }
+
             let mut app = Applicability::MachineApplicable;
             let (snip, snip_is_macro) =
                 snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
