@@ -415,6 +415,16 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 * [`cargo_common_metadata`](https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata)
 
 
+## `check-copy-then-borrow-mut-in-tests`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`copy_then_borrow_mut`](https://rust-lang.github.io/rust-clippy/master/index.html#copy_then_borrow_mut)
+
+
 ## `check-incompatible-msrv-in-tests`
 Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
 
@@ -724,6 +734,16 @@ The maximum number of bounds a trait can have to be linted
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds)
 
 
+## `min-and-mask-size`
+The smallest number of bits masked with `&` which will be replaced by `.is_multiple_of()`.
+
+**Default Value:** `3`
+
+---
+**Affected lints:**
+* [`manual_is_multiple_of`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_multiple_of)
+
+
 ## `min-ident-chars-threshold`
 Minimum chars an ident can have, anything below or equal to this will be linted.
 
@@ -805,6 +825,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_flatten`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_flatten)
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`manual_is_ascii_check`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check)
+* [`manual_is_power_of_two`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_power_of_two)
 * [`manual_let_else`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
 * [`manual_midpoint`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_midpoint)
 * [`manual_non_exhaustive`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive)

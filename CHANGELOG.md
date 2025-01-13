@@ -5597,6 +5597,7 @@ Released 2018-09-13
 [`const_is_empty`]: https://rust-lang.github.io/rust-clippy/master/index.html#const_is_empty
 [`const_static_lifetime`]: https://rust-lang.github.io/rust-clippy/master/index.html#const_static_lifetime
 [`copy_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#copy_iterator
+[`copy_then_borrow_mut`]: https://rust-lang.github.io/rust-clippy/master/index.html#copy_then_borrow_mut
 [`crate_in_macro_def`]: https://rust-lang.github.io/rust-clippy/master/index.html#crate_in_macro_def
 [`create_dir`]: https://rust-lang.github.io/rust-clippy/master/index.html#create_dir
 [`crosspointer_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#crosspointer_transmute
@@ -5863,6 +5864,7 @@ Released 2018-09-13
 [`manual_is_ascii_check`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check
 [`manual_is_finite`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_finite
 [`manual_is_infinite`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_infinite
+[`manual_is_multiple_of`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_multiple_of
 [`manual_is_power_of_two`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_power_of_two
 [`manual_is_variant_and`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_variant_and
 [`manual_let_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
@@ -6217,6 +6219,7 @@ Released 2018-09-13
 [`suspicious_unary_op_formatting`]: https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_unary_op_formatting
 [`suspicious_xor_used_as_pow`]: https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_xor_used_as_pow
 [`swap_ptr_to_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#swap_ptr_to_ref
+[`swap_with_temporary`]: https://rust-lang.github.io/rust-clippy/master/index.html#swap_with_temporary
 [`tabs_in_doc_comments`]: https://rust-lang.github.io/rust-clippy/master/index.html#tabs_in_doc_comments
 [`temporary_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_assignment
 [`temporary_cstring_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_cstring_as_ptr
@@ -6267,6 +6270,7 @@ Released 2018-09-13
 [`uninit_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninit_vec
 [`uninlined_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
 [`unit_arg`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_arg
+[`unit_as_impl_trait`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_as_impl_trait
 [`unit_cmp`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_cmp
 [`unit_hash`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_hash
 [`unit_return_expecting_ord`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_return_expecting_ord
@@ -6406,6 +6410,7 @@ Released 2018-09-13
 [`avoid-breaking-exported-api`]: https://doc.rust-lang.org/clippy/lint_configuration.html#avoid-breaking-exported-api
 [`await-holding-invalid-types`]: https://doc.rust-lang.org/clippy/lint_configuration.html#await-holding-invalid-types
 [`cargo-ignore-publish`]: https://doc.rust-lang.org/clippy/lint_configuration.html#cargo-ignore-publish
+[`check-copy-then-borrow-mut-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-copy-then-borrow-mut-in-tests
 [`check-incompatible-msrv-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-incompatible-msrv-in-tests
 [`check-inconsistent-struct-field-initializers`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-inconsistent-struct-field-initializers
 [`check-private-items`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-private-items
@@ -6432,6 +6437,7 @@ Released 2018-09-13
 [`max-struct-bools`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-struct-bools
 [`max-suggested-slice-pattern-length`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-suggested-slice-pattern-length
 [`max-trait-bounds`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-trait-bounds
+[`min-and-mask-size`]: https://doc.rust-lang.org/clippy/lint_configuration.html#min-and-mask-size
 [`min-ident-chars-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#min-ident-chars-threshold
 [`missing-docs-in-crate-items`]: https://doc.rust-lang.org/clippy/lint_configuration.html#missing-docs-in-crate-items
 [`module-item-order-groupings`]: https://doc.rust-lang.org/clippy/lint_configuration.html#module-item-order-groupings

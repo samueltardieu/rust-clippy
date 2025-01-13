@@ -103,6 +103,7 @@ mod collection_is_never_read;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
+mod copy_then_borrow_mut;
 mod crate_in_macro_def;
 mod create_dir;
 mod dbg_macro;
@@ -369,6 +370,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -760,7 +762,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(trait_bounds::TraitBounds::new(conf)));
     store.register_late_pass(|_| Box::new(comparison_chain::ComparisonChain));
     store.register_late_pass(move |tcx| Box::new(mut_key::MutableKeyType::new(tcx, conf)));
-    store.register_early_pass(|| Box::new(reference::DerefAddrOf));
+    store.register_late_pass(|_| Box::new(reference::DerefAddrOf));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
     let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| Box::new(format_impl::FormatImpl::new(format_args.clone())));
@@ -971,7 +973,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(zombie_processes::ZombieProcesses));
     store.register_late_pass(|_| Box::new(pointers_in_nomem_asm_block::PointersInNomemAsmBlock));
     store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
-    store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
+    store.register_late_pass(move |_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo::new(conf)));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
     store.register_late_pass(|_| Box::new(literal_string_with_formatting_args::LiteralStringWithFormattingArg));
     store.register_late_pass(move |_| Box::new(unused_trait_names::UnusedTraitNames::new(conf)));
@@ -984,5 +986,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(non_std_lazy_statics::NonStdLazyStatic::new(conf)));
     store.register_late_pass(|_| Box::new(manual_option_as_slice::ManualOptionAsSlice::new(conf)));
     store.register_late_pass(|_| Box::new(single_option_map::SingleOptionMap));
+    store.register_late_pass(|_| Box::new(copy_then_borrow_mut::CopyThenBorrowMut::new(conf)));
+    store.register_late_pass(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

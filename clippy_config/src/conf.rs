@@ -537,6 +537,9 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(copy_then_borrow_mut)]
+    check_copy_then_borrow_mut_in_tests: bool = true,
     /// Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
     #[lints(incompatible_msrv)]
     check_incompatible_msrv_in_tests: bool = false,
@@ -672,6 +675,9 @@ define_Conf! {
     /// The maximum number of bounds a trait can have to be linted
     #[lints(type_repetition_in_bounds)]
     max_trait_bounds: u64 = 3,
+    /// The smallest number of bits masked with `&` which will be replaced by `.is_multiple_of()`.
+    #[lints(manual_is_multiple_of)]
+    min_and_mask_size: u8 = 3,
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
     #[lints(min_ident_chars)]
     min_ident_chars_threshold: u64 = 1,
@@ -722,6 +728,7 @@ define_Conf! {
         manual_flatten,
         manual_hash_one,
         manual_is_ascii_check,
+        manual_is_power_of_two,
         manual_let_else,
         manual_midpoint,
         manual_non_exhaustive,

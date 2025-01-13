@@ -30,6 +30,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            avoid-breaking-exported-api
            await-holding-invalid-types
            cargo-ignore-publish
+           check-copy-then-borrow-mut-in-tests
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
            check-private-items
@@ -56,6 +57,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
@@ -122,6 +124,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            avoid-breaking-exported-api
            await-holding-invalid-types
            cargo-ignore-publish
+           check-copy-then-borrow-mut-in-tests
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
            check-private-items
@@ -148,6 +151,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
@@ -214,6 +218,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            avoid-breaking-exported-api
            await-holding-invalid-types
            cargo-ignore-publish
+           check-copy-then-borrow-mut-in-tests
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
            check-private-items
@@ -240,6 +245,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
