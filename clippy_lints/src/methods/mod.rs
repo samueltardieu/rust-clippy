@@ -89,6 +89,7 @@ mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
+mod parsed_string_literals;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
 mod range_zip_with_len;
@@ -3859,6 +3860,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where f is a function or closure that returns the `bool` type.
+    /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`.
     ///
     /// ### Why is this bad?
     /// Readability. These can be written more concisely as `option.is_some_and(f)` and `result.is_ok_and(f)`.
@@ -3869,6 +3871,11 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// option.map(|a| a > 10).unwrap_or_default();
     /// result.map(|a| a > 10).unwrap_or_default();
+    ///
+    /// option.map(|a| a > 10) == Some(true);
+    /// result.map(|a| a > 10) == Ok(true);
+    /// option.map(|a| a > 10) != Some(true);
+    /// result.map(|a| a > 10) != Ok(true);
     /// ```
     /// Use instead:
     /// ```no_run
@@ -3876,11 +3883,16 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// option.is_some_and(|a| a > 10);
     /// result.is_ok_and(|a| a > 10);
+    ///
+    /// option.is_some_and(|a| a > 10);
+    /// result.is_ok_and(|a| a > 10);
+    /// option.is_none_or(|a| a > 10);
+    /// !result.is_ok_and(|a| a > 10);
     /// ```
     #[clippy::version = "1.77.0"]
     pub MANUAL_IS_VARIANT_AND,
     pedantic,
-    "using `.map(f).unwrap_or_default()`, which is more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
+    "using `.map(f).unwrap_or_default()` or `.map(f) == Some/Ok(true)`, which are more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
 }
 
 declare_clippy_lint! {
@@ -4565,6 +4577,36 @@ declare_clippy_lint! {
     "hardcoded localhost IP address"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for parsing string literals into types from the standard library
+    ///
+    /// ### Why is this bad?
+    /// Parsing known values at runtime consumes resources and forces to
+    /// unwrap the `Ok()` variant returned by `parse()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = "123".parse::<u32>().unwrap();
+    /// let addr1: Ipv4Addr = "10.2.3.4".parse().unwrap();
+    /// let addr2: Ipv4Addr = "127.0.0.1".parse().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = 123_u32;
+    /// let addr1: Ipv4Addr = Ipv4Addr::new(10, 2, 3, 4);
+    /// let addr2: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.90.0"]
+    pub PARSED_STRING_LITERALS,
+    perf,
+    "known-correct literal IP address parsing"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4744,6 +4786,7 @@ impl_lint_pass!(Methods => [
     IO_OTHER_ERROR,
     SWAP_WITH_TEMPORARY,
     IP_CONSTANT,
+    PARSED_STRING_LITERALS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -5275,10 +5318,6 @@ impl Methods {
                     }
                     map_identity::check(cx, expr, recv, m_arg, name, span);
                     manual_inspect::check(cx, expr, m_arg, name, span, self.msrv);
-                    crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
-                },
-                (sym::map_break | sym::map_continue, [m_arg]) => {
-                    crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
                 },
                 (sym::map_or, [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
@@ -5443,7 +5482,7 @@ impl Methods {
                         implicit_clone::check(cx, name, expr, recv);
                     }
                 },
-                (sym::to_os_string | sym::to_path_buf | sym::to_vec, []) => {
+                (sym::to_os_string | sym::to_path_buf | sym::to_string | sym::to_vec, []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
                 (sym::type_id, []) => {
@@ -5459,6 +5498,9 @@ impl Methods {
                         },
                         Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
+                        },
+                        Some((sym::parse, recv, [], _, _)) => {
+                            parsed_string_literals::check(cx, expr, recv, self.msrv);
                         },
                         _ => {},
                     }
@@ -5546,7 +5588,7 @@ impl Methods {
         // Handle method calls whose receiver and arguments may come from expansion
         if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
             match (path.ident.name, args) {
-                (sym::expect, [_]) if !matches!(method_call(recv), Some((sym::ok | sym::err, _, [], _, _))) => {
+                (sym::expect, [_]) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,

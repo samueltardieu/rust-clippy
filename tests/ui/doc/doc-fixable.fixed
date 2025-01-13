@@ -74,7 +74,7 @@ fn test_units() {
 /// GitHub GitLab
 /// IPv4 IPv6
 /// ClojureScript CoffeeScript JavaScript PostScript PureScript TypeScript
-/// WebAssembly
+/// PowerPC WebAssembly
 /// NaN NaNs
 /// OAuth GraphQL
 /// OCaml
@@ -83,7 +83,7 @@ fn test_units() {
 /// WebGL WebGL2 WebGPU WebRTC WebSocket WebTransport
 /// TensorFlow
 /// TrueType
-/// iOS macOS FreeBSD NetBSD OpenBSD
+/// iOS macOS FreeBSD NetBSD OpenBSD NixOS
 /// TeX LaTeX BibTeX BibLaTeX
 /// MinGW
 /// CamelCase (see also #2395)

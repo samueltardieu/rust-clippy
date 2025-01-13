@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::{MacroNS, TypeNS, ValueNS};
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{ImplItemRef, ItemKind, Node, OwnerId, TraitItemRef, UseKind};
+use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, UintTy};
@@ -126,14 +126,26 @@ path_macros! {
     macro_path: PathNS::Macro,
 }
 
-// Paths in `core`/`alloc`/`std`. This should be avoided and cleaned up by adding diagnostic items.
-pub static ALIGN_OF: PathLookup = value_path!(core::mem::align_of);
-pub static CHAR_TO_DIGIT: PathLookup = value_path!(char::to_digit);
-pub static CONCAT: PathLookup = macro_path!(core::concat);
-pub static IO_ERROR_NEW: PathLookup = value_path!(std::io::Error::new);
-pub static IO_ERRORKIND_OTHER_CTOR: PathLookup = value_path!(std::io::ErrorKind::Other);
-pub static ITER_STEP: PathLookup = type_path!(core::iter::Step);
-pub static SLICE_FROM_REF: PathLookup = value_path!(core::slice::from_ref);
+// Paths in standard library (`alloc`/`core`/`std`, or against builtin scalar types)
+// should be added as diagnostic items directly into the standard library, through a
+// PR against the `rust-lang/rust` repository. If makes Clippy more robust in case
+// the item is moved around, e.g. if the library structure is reorganized.
+//
+// If their use is required before the next sync (which happens every two weeks),
+// they can be temporarily added below, prefixed with `DIAG_ITEM`, and commented
+// with a reference to the PR adding the diagnostic item:
+//
+// ```rust
+// // `sym::io_error_new` added in <https://github.com/rust-lang/rust/pull/142787>
+// pub static DIAG_ITEM_IO_ERROR_NEW: PathLookup = value_path!(std::io::Error::new);
+// ```
+//
+// During development, the "Added in …" comment is not required, but will make the
+// test fail once the PR is submitted and becomes mandatory to ensure that a proper
+// PR against `rust-lang/rust` has been created.
+//
+// You can request advice from the Clippy team members if you are not sure of how to
+// add the diagnostic item to the standard library, or how to name it.
 
 // Paths in external crates
 pub static FUTURES_IO_ASYNCREADEXT: PathLookup = type_path!(futures_util::AsyncReadExt);
@@ -293,14 +305,6 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
         _ => return None,
     };
 
-    let res = |ident: Ident, owner_id: OwnerId| {
-        if ident.name == name && ns.matches(tcx.def_kind(owner_id).ns()) {
-            Some(owner_id.to_def_id())
-        } else {
-            None
-        }
-    };
-
     match item_kind {
         ItemKind::Mod(_, r#mod) => r#mod.item_ids.iter().find_map(|&item_id| {
             let item = tcx.hir_item(item_id);
@@ -316,17 +320,20 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
                 } else {
                     None
                 }
+            } else if let Some(ident) = item.kind.ident()
+                && ident.name == name
+                && ns.matches(tcx.def_kind(item.owner_id).ns())
+            {
+                Some(item.owner_id.to_def_id())
             } else {
-                res(item.kind.ident()?, item_id.owner_id)
+                None
             }
         }),
-        ItemKind::Impl(r#impl) => r#impl
-            .items
-            .iter()
-            .find_map(|&ImplItemRef { ident, id, .. }| res(ident, id.owner_id)),
-        ItemKind::Trait(.., trait_item_refs) => trait_item_refs
-            .iter()
-            .find_map(|&TraitItemRef { ident, id, .. }| res(ident, id.owner_id)),
+        ItemKind::Impl(..) | ItemKind::Trait(..) => tcx
+            .associated_items(local_id)
+            .filter_by_name_unhygienic(name)
+            .find(|assoc_item| ns.matches(Some(assoc_item.namespace())))
+            .map(|assoc_item| assoc_item.def_id),
         _ => None,
     }
 }
