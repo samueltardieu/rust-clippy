@@ -6670,6 +6670,7 @@ Released 2018-09-13
 [`boxed_local`]: https://rust-lang.github.io/rust-clippy/master/index.html#boxed_local
 [`branches_sharing_code`]: https://rust-lang.github.io/rust-clippy/master/index.html#branches_sharing_code
 [`builtin_type_shadow`]: https://rust-lang.github.io/rust-clippy/master/index.html#builtin_type_shadow
+[`by_ref_peekable_peek`]: https://rust-lang.github.io/rust-clippy/master/index.html#by_ref_peekable_peek
 [`byte_char_slices`]: https://rust-lang.github.io/rust-clippy/master/index.html#byte_char_slices
 [`bytes_count_to_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#bytes_count_to_len
 [`bytes_nth`]: https://rust-lang.github.io/rust-clippy/master/index.html#bytes_nth
@@ -7199,6 +7200,7 @@ Released 2018-09-13
 [`panic_params`]: https://rust-lang.github.io/rust-clippy/master/index.html#panic_params
 [`panicking_overflow_checks`]: https://rust-lang.github.io/rust-clippy/master/index.html#panicking_overflow_checks
 [`panicking_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#panicking_unwrap
+[`parsed_string_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#parsed_string_literals
 [`partial_pub_fields`]: https://rust-lang.github.io/rust-clippy/master/index.html#partial_pub_fields
 [`partialeq_ne_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_ne_impl
 [`partialeq_to_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_to_none
@@ -7422,6 +7424,7 @@ Released 2018-09-13
 [`uninit_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninit_vec
 [`uninlined_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
 [`unit_arg`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_arg
+[`unit_as_impl_trait`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_as_impl_trait
 [`unit_cmp`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_cmp
 [`unit_hash`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_hash
 [`unit_return_expecting_ord`]: https://rust-lang.github.io/rust-clippy/master/index.html#unit_return_expecting_ord

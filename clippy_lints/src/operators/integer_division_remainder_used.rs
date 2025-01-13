@@ -1,3 +1,4 @@
+use crate::clippy_utils::source::HasSession;
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::BinOpKind;
 use rustc_hir::Expr;
@@ -13,11 +14,12 @@ pub(super) fn check(cx: &LateContext<'_>, op: BinOpKind, lhs: &Expr<'_>, rhs: &E
         && let rhs_ty = cx.typeck_results().expr_ty(rhs)
         && let ty::Int(_) | ty::Uint(_) = lhs_ty.peel_refs().kind()
         && let ty::Int(_) | ty::Uint(_) = rhs_ty.peel_refs().kind()
+        && !span.in_external_macro(cx.sess().source_map())
     {
         span_lint(
             cx,
             INTEGER_DIVISION_REMAINDER_USED,
-            span.source_callsite(),
+            span,
             format!("use of `{}` has been disallowed in this context", op.as_str()),
         );
     }
