@@ -58,6 +58,7 @@ mod join_absolute_paths;
 mod lib;
 mod lines_filter_map_ok;
 mod manual_c_str_literals;
+mod manual_clear;
 mod manual_contains;
 mod manual_inspect;
 mod manual_is_variant_and;
@@ -93,6 +94,7 @@ mod option_as_ref_deref;
 mod option_map_or_none;
 mod or_fun_call;
 mod or_then_unwrap;
+mod parsed_string_literals;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
 mod ptr_offset_by_literal;
@@ -1771,6 +1773,31 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `.truncate(0)` calls on standard library types where it can be replaced with `.clear()`.
+    ///
+    /// Currently this includes `Vec`, `VecDeque`, `String`, and `OsString`.
+    ///
+    /// ### Why is this bad?
+    /// `clear()` expresses the intent better and is likely to be more efficient than `truncate(0)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut v = vec![1, 2, 3];
+    /// v.truncate(0);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let mut v = vec![1, 2, 3];
+    /// v.clear();
+    /// ```
+    #[clippy::version = "1.96.0"]
+    pub MANUAL_CLEAR,
+    perf,
+    "using `truncate(0)` instead of `clear()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
     ///
     /// ### Why is this bad?
@@ -2961,6 +2988,36 @@ declare_clippy_lint! {
     pub OR_THEN_UNWRAP,
     complexity,
     "checks for `.or(…).unwrap()` calls to Options and Results."
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for parsing string literals into types from the standard library
+    ///
+    /// ### Why is this bad?
+    /// Parsing known values at runtime consumes resources and forces to
+    /// unwrap the `Ok()` variant returned by `parse()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = "123".parse::<u32>().unwrap();
+    /// let addr1: Ipv4Addr = "10.2.3.4".parse().unwrap();
+    /// let addr2: Ipv4Addr = "127.0.0.1".parse().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = 123_u32;
+    /// let addr1: Ipv4Addr = Ipv4Addr::new(10, 2, 3, 4);
+    /// let addr2: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.95.0"]
+    pub PARSED_STRING_LITERALS,
+    complexity,
+    "literal parsing at run-time rather than compile-time"
 }
 
 declare_clippy_lint! {
@@ -4839,6 +4896,7 @@ impl_lint_pass!(Methods => [
     ITER_WITH_DRAIN,
     JOIN_ABSOLUTE_PATHS,
     LINES_FILTER_MAP_OK,
+    MANUAL_CLEAR,
     MANUAL_CONTAINS,
     MANUAL_C_STR_LITERALS,
     MANUAL_FILTER_MAP,
@@ -4880,6 +4938,7 @@ impl_lint_pass!(Methods => [
     OPTION_MAP_OR_NONE,
     OR_FUN_CALL,
     OR_THEN_UNWRAP,
+    PARSED_STRING_LITERALS,
     PATH_BUF_PUSH_OVERWRITE,
     PATH_ENDS_WITH_EXT,
     PTR_OFFSET_BY_LITERAL,
@@ -5671,6 +5730,9 @@ impl Methods {
                         Some((sym::get_mut, recv, [get_arg], _, _)) => {
                             get_unwrap::check(cx, expr, recv, get_arg, true);
                         },
+                        Some((sym::parse, inner_recv, [], _, _)) => {
+                            parsed_string_literals::check(cx, expr, inner_recv, recv, self.msrv);
+                        },
                         Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
@@ -5806,6 +5868,9 @@ impl Methods {
                 },
                 (sym::to_string, []) => {
                     inefficient_to_string::check(cx, expr, recv, self.msrv);
+                },
+                (sym::truncate, [arg]) => {
+                    manual_clear::check(cx, expr, recv, arg, method_span);
                 },
                 (sym::unwrap, []) => {
                     unwrap_expect_used::check(
