@@ -563,17 +563,12 @@ define_Conf! {
     /// [from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
     #[lints(inconsistent_struct_constructor)]
     check_inconsistent_struct_field_initializers: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(mutable_borrow_of_copy)]
+    check_mutable_borrow_of_copy_in_tests: bool = true,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
-    /// The maximum cognitive complexity a function can have
-    #[lints(cognitive_complexity)]
-    cognitive_complexity_threshold: u64 = 25,
-    /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
-    ///
-    /// Use the Cognitive Complexity lint instead.
-    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
-    cyclomatic_complexity_threshold: u64 = 25,
     /// The list of disallowed macros, written as fully qualified paths.
     ///
     /// **Fields:**

@@ -16,6 +16,10 @@ macro_rules! declare_with_version {
 declare_with_version! { DEPRECATED(DEPRECATED_VERSION) = [
     #[clippy::version = "1.30.0"]
     ("clippy::assign_ops", "compound operators are harmless and linting on them is not in scope for clippy"),
+    #[clippy::version = "1.90.0"]
+    ("clippy::cognitive_complexity", "`excessive_nesting` and `too_many_lines` lints allow for finer-grain controls"),
+    #[clippy::version = "1.35.0"]
+    ("clippy::cyclomatic_complexity", "`excessive_nesting` and `too_many_lines` lints allow for finer-grain controls"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::extend_from_slice", "`Vec::extend_from_slice` is no longer faster than `Vec::extend` due to specialization"),
     #[clippy::version = "1.86.0"]
@@ -34,6 +38,8 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION) = [
     ("clippy::replace_consts", "`min_value` and `max_value` are now deprecated"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::should_assert_eq", "`assert!(a == b)` can now print the values the same way `assert_eq!(a, b) can"),
+    #[clippy::version = "1.90.0"]
+    ("clippy::string_to_string", "`clippy:implicit_clone` covers those cases"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::unsafe_vector_initialization", "the suggested alternative could be substantially slower"),
     #[clippy::version = "pre 1.29.0"]
@@ -68,8 +74,6 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::cmp_nan", "invalid_nan_comparisons"),
     #[clippy::version = ""]
     ("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes"),
-    #[clippy::version = ""]
-    ("clippy::cyclomatic_complexity", "clippy::cognitive_complexity"),
     #[clippy::version = ""]
     ("clippy::derive_hash_xor_eq", "clippy::derived_hash_with_manual_eq"),
     #[clippy::version = ""]

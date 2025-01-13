@@ -46,5 +46,8 @@ helper.txt
 .vscode
 .idea
 
+# Emacs
+.dir-locals.el
+
 # mdbook generated output
 /book/book
