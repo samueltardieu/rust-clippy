@@ -563,6 +563,9 @@ define_Conf! {
     /// [from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
     #[lints(inconsistent_struct_constructor)]
     check_inconsistent_struct_field_initializers: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(mutable_borrow_of_copy)]
+    check_mutable_borrow_of_copy_in_tests: bool = true,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
@@ -641,9 +644,9 @@ define_Conf! {
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
-    /// Whether collapsible `if` chains are linted if they contain comments inside the parts
+    /// Whether collapsible `if` and `else if` chains are linted if they contain comments inside the parts
     /// that would be collapsed.
-    #[lints(collapsible_if)]
+    #[lints(collapsible_else_if, collapsible_if)]
     lint_commented_code: bool = false,
     /// Whether to suggest reordering constructor fields when initializers are present.
     /// DEPRECATED CONFIGURATION: lint-inconsistent-struct-field-initializers

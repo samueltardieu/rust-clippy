@@ -462,6 +462,16 @@ fn main() {
 * [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
 
 
+## `check-mutable-borrow-of-copy-in-tests`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`mutable_borrow_of_copy`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_borrow_of_copy)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
@@ -651,13 +661,14 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 
 
 ## `lint-commented-code`
-Whether collapsible `if` chains are linted if they contain comments inside the parts
+Whether collapsible `if` and `else if` chains are linted if they contain comments inside the parts
 that would be collapsed.
 
 **Default Value:** `false`
 
 ---
 **Affected lints:**
+* [`collapsible_else_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_else_if)
 * [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
 
 
