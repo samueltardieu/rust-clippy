@@ -677,14 +677,14 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
     }
 }
 
-/// Gets an iterator over all predicates which apply to the given item.
-pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(ty::Clause<'_>, Span)> {
+/// Gets an iterator over all clauses which apply to the given item.
+pub fn all_clauses_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(ty::Clause<'_>, Span)> {
     let mut next_id = Some(id);
     iter::from_fn(move || {
         next_id.take().map(|id| {
-            let preds = tcx.predicates_of(id);
-            next_id = preds.parent;
-            preds.predicates.iter()
+            let gen_clauses = tcx.clauses_of(id);
+            next_id = gen_clauses.parent;
+            gen_clauses.clauses.iter()
         })
     })
     .flatten()
@@ -1162,9 +1162,12 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
     }
 }
 
-/// Returns whether `ty` is never-like; i.e., `!` (never) or an enum with zero variants.
-pub fn is_never_like(ty: Ty<'_>) -> bool {
-    ty.is_never() || (ty.is_enum() && ty.ty_adt_def().is_some_and(|def| def.variants().is_empty()))
+/// Returns whether `ty` is known to be uninhabited (`!`, `std::convert::Infallible`, `enum` with no
+/// variants, `struct` with uninhabited fields, …) from the module being currently linted.
+pub fn is_visibly_uninhabited<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.enclosing_body.is_some_and(|body| {
+        !ty.is_inhabited_from(cx.tcx, cx.tcx.parent_module(body.hir_id).to_def_id(), cx.typing_env())
+    })
 }
 
 /// Makes the projection type for the named associated type in the given impl or trait impl.

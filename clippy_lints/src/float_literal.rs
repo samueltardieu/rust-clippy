@@ -64,7 +64,7 @@ declare_clippy_lint! {
 impl_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
 
 pub struct FloatLiteral {
-    const_literal_digits_threshold: usize,
+    const_literal_digits_threshold: u32,
 }
 
 impl FloatLiteral {
@@ -97,9 +97,14 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
-                FloatTy::F16 | FloatTy::F128 => {
+                FloatTy::F128 => {
                     // FIXME(f16_f128): do a check like the others when parsing is available
                     return;
+                },
+                FloatTy::F16 => {
+                    let value = sym_str.parse::<f16>().unwrap();
+
+                    (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
                 },
                 FloatTy::F32 => {
                     let value = sym_str.parse::<f32>().unwrap();
@@ -142,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     );
                 }
             } else if digits > max as usize && count_digits(&float_str) < digits {
-                if digits >= self.const_literal_digits_threshold
+                if digits >= self.const_literal_digits_threshold as usize
                     && matches!(
                         get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx),
                         ExprUseNode::ConstStatic(_)
@@ -158,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     expr.span,
                     "float has excessive precision",
                     |diag| {
-                        if digits >= self.const_literal_digits_threshold
+                        if digits >= self.const_literal_digits_threshold as usize
                             && let Some(let_stmt) = maybe_let_stmt(cx, expr)
                         {
                             diag.span_note(let_stmt.span, "consider making it a `const` item");

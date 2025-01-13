@@ -7,7 +7,8 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sym;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath, RustcVersion};
+use rustc_hir::attrs::RustcVersion;
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty::{self, TyCtxt, UintTy};
 use rustc_session::impl_lint_pass;
@@ -65,7 +66,10 @@ impl DurationSuboptimalUnits {
         if tcx.features().enabled(sym::duration_constructors) {
             units.extend(EXTENDED_UNITS);
         }
-        Self { msrv: conf.msrv, units }
+        Self {
+            msrv: conf.msrv.into(),
+            units,
+        }
     }
 }
 
@@ -108,7 +112,7 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
                         (arg.span, promoted_value.to_string()),
                     ];
                     diag.multipart_suggestion(
-                        format!("try using {promoted_constructor}"),
+                        format!("try using `Duration::{promoted_constructor}`"),
                         suggestions,
                         Applicability::MachineApplicable,
                     );

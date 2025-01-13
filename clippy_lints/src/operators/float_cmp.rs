@@ -1,13 +1,59 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace, macro_backtrace};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{parent_item_name, sym};
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
+use rustc_span::SyntaxContext;
 
 use super::{FLOAT_CMP, FLOAT_CMP_CONST};
+
+pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+    if let Some(macro_call) =
+        first_node_macro_backtrace(cx, e).find(|macro_call| is_assert_eq_diag(cx, macro_call.def_id))
+        && let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn)
+        && is_float(cx, lhs)
+    {
+        let ecx = ConstEvalCtxt::new(cx);
+        let ctxt = macro_call.span.ctxt();
+
+        let has_const = is_float_const(&ecx, lhs, ctxt) || is_float_const(&ecx, rhs, ctxt);
+        if !has_const {
+            return;
+        }
+
+        let is_comparing_arrays = is_array(cx, lhs) || is_array(cx, rhs);
+        let msg = if is_comparing_arrays {
+            "strict comparison of `f32` or `f64` constant arrays"
+        } else {
+            "strict comparison of `f32` or `f64` constant"
+        };
+
+        clippy_utils::diagnostics::span_lint(cx, FLOAT_CMP_CONST, macro_call.span, msg);
+    }
+}
+
+fn is_float_const(ecx: &ConstEvalCtxt<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
+    match ecx.eval_with_source(expr, ctxt) {
+        Some((c, s)) if !is_allowed(&c) => !s.is_local(),
+        _ => false,
+    }
+}
+
+fn is_assert_eq_diag(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    matches!(
+        cx.tcx.get_diagnostic_name(def_id),
+        Some(sym::assert_eq_macro | sym::assert_ne_macro | sym::debug_assert_eq_macro | sym::debug_assert_ne_macro)
+    )
+}
+
+fn is_inside_assert_eq(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    macro_backtrace(expr.span).any(|mc| is_assert_eq_diag(cx, mc.def_id))
+}
 
 pub(crate) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -17,6 +63,12 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if (op == BinOpKind::Eq || op == BinOpKind::Ne) && is_float(cx, left) {
+        // Skip if inside assert_eq!/assert_ne! macro to avoid double-linting
+        // (handled by check_assert)
+        if is_inside_assert_eq(cx, expr) {
+            return;
+        }
+
         let ecx = ConstEvalCtxt::new(cx);
         let ctxt = expr.span.ctxt();
         let left_is_local = match ecx.eval_with_source(left, ctxt) {
@@ -68,18 +120,18 @@ fn get_lint_and_message(is_local: bool, is_comparing_arrays: bool) -> (&'static 
         (
             FLOAT_CMP,
             if is_comparing_arrays {
-                "strict comparison of `f32` or `f64` arrays"
+                "strict comparison of floating point arrays"
             } else {
-                "strict comparison of `f32` or `f64`"
+                "strict comparison of floating point values"
             },
         )
     } else {
         (
             FLOAT_CMP_CONST,
             if is_comparing_arrays {
-                "strict comparison of `f32` or `f64` constant arrays"
+                "strict comparison of floating point constant arrays"
             } else {
-                "strict comparison of `f32` or `f64` constant"
+                "strict comparison of floating point constant"
             },
         )
     }
@@ -87,12 +139,15 @@ fn get_lint_and_message(is_local: bool, is_comparing_arrays: bool) -> (&'static 
 
 fn is_allowed(val: &Constant) -> bool {
     match val {
-        // FIXME(f16_f128): add when equality check is available on all platforms
+        &Constant::F16(f) => f == 0.0 || f.is_infinite(),
         &Constant::F32(f) => f == 0.0 || f.is_infinite(),
         &Constant::F64(f) => f == 0.0 || f.is_infinite(),
+        &Constant::F128(f) => f == 0.0 || f.is_infinite(),
         Constant::Vec(vec) => vec.iter().all(|f| match f {
+            Constant::F16(f) => *f == 0.0 || (*f).is_infinite(),
             Constant::F32(f) => *f == 0.0 || (*f).is_infinite(),
             Constant::F64(f) => *f == 0.0 || (*f).is_infinite(),
+            Constant::F128(f) => *f == 0.0 || (*f).is_infinite(),
             _ => false,
         }),
         _ => false,
