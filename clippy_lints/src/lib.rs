@@ -103,6 +103,7 @@ mod collection_is_never_read;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
+mod copy_then_borrow_mut;
 mod crate_in_macro_def;
 mod create_dir;
 mod dbg_macro;
@@ -365,6 +366,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -372,6 +374,7 @@ mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
+mod unnecessary_semicolon;
 mod unnecessary_struct_initialization;
 mod unnecessary_wraps;
 mod unneeded_struct_pattern;
@@ -972,5 +975,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));
     store.register_late_pass(move |_| Box::new(arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf)));
     store.register_late_pass(|_| Box::new(unneeded_struct_pattern::UnneededStructPattern));
+    store.register_late_pass(|_| Box::new(unnecessary_semicolon::UnnecessarySemicolon));
+    store.register_late_pass(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait));
+    store.register_late_pass(|_| Box::new(copy_then_borrow_mut::CopyThenBorrowMut));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

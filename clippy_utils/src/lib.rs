@@ -88,7 +88,7 @@ use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use std::iter::{once, repeat};
+use std::iter::{once, repeat_n};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
@@ -815,7 +815,7 @@ fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'
                 e = ep;
             },
             _ => break e,
-        };
+        }
     };
     result.reverse();
     (result, root)
@@ -1648,6 +1648,17 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
     false
 }
 
+/// Checks whether the given expression is a constant literal of the given value.
+pub fn is_float_literal(expr: &Expr<'_>, value: f64) -> bool {
+    if let ExprKind::Lit(spanned) = expr.kind
+        && let LitKind::Float(v, _) = spanned.node
+    {
+        v.as_str().parse() == Ok(value)
+    } else {
+        false
+    }
+}
+
 /// Returns `true` if the given `Expr` has been coerced before.
 ///
 /// Examples of coercions can be found in the Nomicon at
@@ -2045,7 +2056,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
         {
             return Some(expr);
         }
-    };
+    }
     None
 }
 
@@ -3420,7 +3431,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             }))
             .join("::")
     } else {
-        repeat(String::from("super")).take(go_up_by).chain(path).join("::")
+        repeat_n(String::from("super"), go_up_by).chain(path).join("::")
     }
 }
 
