@@ -1,6 +1,7 @@
 //@rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/trait_definition_order
 //@check-pass
 #![deny(clippy::arbitrary_source_item_ordering)]
+#![allow(clippy::unit_as_impl_trait)]
 
 struct Languages;
 struct Language;

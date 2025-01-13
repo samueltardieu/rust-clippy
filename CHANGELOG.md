@@ -7628,6 +7628,7 @@ Released 2018-09-13
 [`panic_params`]: https://clippy.rust-lang.org/main/index.html#panic_params
 [`panicking_overflow_checks`]: https://clippy.rust-lang.org/main/index.html#panicking_overflow_checks
 [`panicking_unwrap`]: https://clippy.rust-lang.org/main/index.html#panicking_unwrap
+[`parsed_string_literals`]: https://clippy.rust-lang.org/main/index.html#parsed_string_literals
 [`partial_pub_fields`]: https://clippy.rust-lang.org/main/index.html#partial_pub_fields
 [`partialeq_ne_impl`]: https://clippy.rust-lang.org/main/index.html#partialeq_ne_impl
 [`partialeq_to_none`]: https://clippy.rust-lang.org/main/index.html#partialeq_to_none
@@ -7854,6 +7855,7 @@ Released 2018-09-13
 [`uninit_vec`]: https://clippy.rust-lang.org/main/index.html#uninit_vec
 [`uninlined_format_args`]: https://clippy.rust-lang.org/main/index.html#uninlined_format_args
 [`unit_arg`]: https://clippy.rust-lang.org/main/index.html#unit_arg
+[`unit_as_impl_trait`]: https://clippy.rust-lang.org/main/index.html#unit_as_impl_trait
 [`unit_cmp`]: https://clippy.rust-lang.org/main/index.html#unit_cmp
 [`unit_hash`]: https://clippy.rust-lang.org/main/index.html#unit_hash
 [`unit_return_expecting_ord`]: https://clippy.rust-lang.org/main/index.html#unit_return_expecting_ord
