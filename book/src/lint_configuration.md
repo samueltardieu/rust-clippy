@@ -415,6 +415,16 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 * [`cargo_common_metadata`](https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata)
 
 
+## `check-copy-then-borrow-mut-in-test`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`copy_then_borrow_mut`](https://rust-lang.github.io/rust-clippy/master/index.html#copy_then_borrow_mut)
+
+
 ## `check-incompatible-msrv-in-tests`
 Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
 
@@ -446,6 +456,17 @@ The maximum cognitive complexity a function can have
 ---
 **Affected lints:**
 * [`cognitive_complexity`](https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity)
+
+
+## `collapse-let-chains`
+Whether `if let` chains should be collapsed. This requires the use of the unstable
+`let_chains` rustc feature.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
 
 
 ## `disallowed-macros`
@@ -603,6 +624,24 @@ A list of paths to types that should be treated as if they do not contain interi
 * [`mutable_key_type`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type)
 
 
+## `ignore-msrv-check-for`
+A list of path to items that should not be checked for a compatible MSRV. This can be used to ignore
+MSRV checks for code which is gated by a feature which depends on the version of the Rust compiler.
+
+#### Example
+
+```toml
+# Ignore those as we use them only when our `modern_compiler` feature is active.
+ignore-msrv-check-for = [ "str::split_once", "std::option::Option::as_slice" ]
+```
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`incompatible_msrv`](https://rust-lang.github.io/rust-clippy/master/index.html#incompatible_msrv)
+
+
 ## `large-error-threshold`
 The maximum size of the `Err`-variant in a `Result` returned from a function
 
@@ -611,6 +650,17 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 ---
 **Affected lints:**
 * [`result_large_err`](https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err)
+
+
+## `lint-commented-code`
+Whether collapsible `if` chains are linted if they contain comments inside the parts
+that would be collapsed.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
 
 
 ## `lint-inconsistent-struct-field-initializers`
@@ -713,6 +763,16 @@ The maximum number of bounds a trait can have to be linted
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds)
 
 
+## `min-and-mask-size`
+The smallest number of bits masked with `&` which will be replaced by `.is_multiple_of()`.
+
+**Default Value:** `3`
+
+---
+**Affected lints:**
+* [`manual_is_multiple_of`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_multiple_of)
+
+
 ## `min-ident-chars-threshold`
 Minimum chars an ident can have, anything below or equal to this will be linted.
 
@@ -738,6 +798,19 @@ crate. For example, `pub(crate)` items.
 The named groupings of different source item kinds within modules.
 
 **Default Value:** `[["modules", ["extern_crate", "mod", "foreign_mod"]], ["use", ["use"]], ["macros", ["macro"]], ["global_asm", ["global_asm"]], ["UPPER_SNAKE_CASE", ["static", "const"]], ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]], ["lower_snake_case", ["fn"]]]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
+## `module-items-ordered-within-groupings`
+Whether the items within module groups should be ordered alphabetically or not.
+
+This option can be configured to "all", "none", or a list of specific grouping names that should be checked
+(e.g. only "enums").
+
+**Default Value:** `"none"`
 
 ---
 **Affected lints:**

@@ -1,15 +1,15 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::is_in_test;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::{def_path_def_ids, is_in_test};
 use rustc_attr_parsing::{RustcVersion, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_hir::{Expr, ExprKind, HirId, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::DefId;
-use rustc_span::{ExpnKind, Span};
+use rustc_span::{ExpnKind, Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -43,16 +43,23 @@ pub struct IncompatibleMsrv {
     msrv: Msrv,
     is_above_msrv: FxHashMap<DefId, RustcVersion>,
     check_in_tests: bool,
+    ignored_def_ids: Vec<DefId>,
 }
 
 impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
 
 impl IncompatibleMsrv {
-    pub fn new(conf: &'static Conf) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
+        let ignored_def_ids = conf
+            .ignore_msrv_check_for
+            .iter()
+            .flat_map(|x| def_path_def_ids(tcx, &x.split("::").collect::<Vec<_>>()))
+            .collect();
         Self {
             msrv: conf.msrv,
             is_above_msrv: FxHashMap::default(),
             check_in_tests: conf.check_incompatible_msrv_in_tests,
+            ignored_def_ids,
         }
     }
 
@@ -84,8 +91,9 @@ impl IncompatibleMsrv {
     }
 
     fn emit_lint_if_under_msrv(&mut self, cx: &LateContext<'_>, def_id: DefId, node: HirId, span: Span) {
-        if def_id.is_local() {
-            // We don't check local items since their MSRV is supposed to always be valid.
+        // We don't check local items since their MSRV is supposed to always be valid, nor ignored items
+        // which may be feature-gated.
+        if def_id.is_local() || self.ignored_def_ids.contains(&def_id) {
             return;
         }
         if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = span.ctxt().outer_expn_data().kind {
@@ -93,6 +101,21 @@ impl IncompatibleMsrv {
             // Intentionally not using `.from_expansion()`, since we do still care about macro expansions
             return;
         }
+
+        // Functions coming from `core` while expanding a macro such as `assert*!()` get to cheat too: the
+        // macros may have existed prior to the checked MSRV, but their expansion with a recent compiler
+        // might use recent functions or methods. Compiling with an older compiler would not use those.
+        if span.from_expansion()
+            && cx.tcx.crate_name(def_id.krate) == sym::core
+            && span
+                .ctxt()
+                .outer_expn_data()
+                .macro_def_id
+                .is_some_and(|def_id| cx.tcx.crate_name(def_id.krate) == sym::core)
+        {
+            return;
+        }
+
         if (self.check_in_tests || !is_in_test(cx.tcx, node))
             && let Some(current) = self.msrv.current(cx)
             && let version = self.get_def_id_version(cx.tcx, def_id)
@@ -118,8 +141,11 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
                     self.emit_lint_if_under_msrv(cx, method_did, expr.hir_id, span);
                 }
             },
-            ExprKind::Call(call, [_]) => {
-                if let ExprKind::Path(qpath) = call.kind
+            ExprKind::Call(call, _) => {
+                // Desugaring into function calls by the compiler will use `QPath::LangItem` variants. Those should
+                // not be linted as they will not be generated in older compilers if the function is not available,
+                // and the compiler is allowed to call unstable functions.
+                if let ExprKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) = call.kind
                     && let Some(path_def_id) = cx.qpath_res(&qpath, call.hir_id).opt_def_id()
                 {
                     self.emit_lint_if_under_msrv(cx, path_def_id, expr.hir_id, call.span);
