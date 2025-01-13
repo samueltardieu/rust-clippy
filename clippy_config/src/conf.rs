@@ -108,7 +108,7 @@ struct ConfError {
 
 impl ConfError {
     fn from_toml(file: &SourceFile, error: &toml::de::Error) -> Self {
-        let span = error.span().unwrap_or(0..file.source_len.0 as usize);
+        let span = error.span().unwrap_or(0..file.normalized_source_len.0 as usize);
         Self::spanned(file, error.message(), None, span)
     }
 
@@ -564,6 +564,9 @@ define_Conf! {
     /// [from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
     #[lints(inconsistent_struct_constructor)]
     check_inconsistent_struct_field_initializers: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(mutable_borrow_of_copy)]
+    check_mutable_borrow_of_copy_in_tests: bool = true,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
@@ -666,6 +669,10 @@ define_Conf! {
     /// Sets the scope ("crate", "file", or "module") in which duplicate inherent `impl` blocks for the same type are linted.
     #[lints(multiple_inherent_impl)]
     inherent_impl_lint_scope: InherentImplLintScope = InherentImplLintScope::Crate,
+    /// A list of paths to types that should be ignored as overly large `Err`-variants in a
+    /// `Result` returned from a function
+    #[lints(result_large_err)]
+    large_error_ignored: Vec<String> = Vec::default(),
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
