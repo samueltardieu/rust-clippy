@@ -92,6 +92,7 @@ mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
+mod parsed_string_literals;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
 mod ptr_offset_by_literal;
@@ -4670,7 +4671,7 @@ declare_clippy_lint! {
     /// let x = vec![String::new()];
     /// let _ = x.iter().map(|x| x.len());
     /// ```
-    #[clippy::version = "1.90.0"]
+    #[clippy::version = "1.92.0"]
     pub REDUNDANT_ITER_CLONED,
     perf,
     "detects redundant calls to `Iterator::cloned`"
@@ -4694,7 +4695,7 @@ declare_clippy_lint! {
     /// let x: Option<u32> = Some(4);
     /// let y = x.unwrap_or_else(|| 2 * k);
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.92.0"]
     pub UNNECESSARY_OPTION_MAP_OR_ELSE,
     suspicious,
     "making no use of the \"map closure\" when calling `.map_or_else(|| 2 * k, |n| n)`"
@@ -4747,6 +4748,36 @@ declare_clippy_lint! {
     pub LINES_FILTER_MAP_OK,
     suspicious,
     "filtering `std::io::Lines` with `filter_map()`, `flat_map()`, or `flatten()` might cause an infinite loop"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for parsing string literals into types from the standard library
+    ///
+    /// ### Why is this bad?
+    /// Parsing known values at runtime consumes resources and forces to
+    /// unwrap the `Ok()` variant returned by `parse()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = "123".parse::<u32>().unwrap();
+    /// let addr1: Ipv4Addr = "10.2.3.4".parse().unwrap();
+    /// let addr2: Ipv4Addr = "127.0.0.1".parse().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = 123_u32;
+    /// let addr1: Ipv4Addr = Ipv4Addr::new(10, 2, 3, 4);
+    /// let addr2: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.93.0"]
+    pub PARSED_STRING_LITERALS,
+    complexity,
+    "known-correct literal IP address parsing"
 }
 
 #[expect(clippy::struct_excessive_bools)]
@@ -4933,6 +4964,7 @@ impl_lint_pass!(Methods => [
     REDUNDANT_ITER_CLONED,
     UNNECESSARY_OPTION_MAP_OR_ELSE,
     LINES_FILTER_MAP_OK,
+    PARSED_STRING_LITERALS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -5597,6 +5629,9 @@ impl Methods {
                         Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
+                        Some((sym::parse, inner_recv, [], _, _)) => {
+                            parsed_string_literals::check(cx, expr, inner_recv, recv, self.msrv);
+                        },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
@@ -5604,14 +5639,7 @@ impl Methods {
                 (sym::unwrap_or, [u_arg]) => {
                     match method_call(recv) {
                         Some((arith @ (sym::checked_add | sym::checked_sub | sym::checked_mul), lhs, [rhs], _, _)) => {
-                            manual_saturating_arithmetic::check(
-                                cx,
-                                expr,
-                                lhs,
-                                rhs,
-                                u_arg,
-                                &arith.as_str()[const { "checked_".len() }..],
-                            );
+                            manual_saturating_arithmetic::check_unwrap_or(cx, expr, lhs, rhs, u_arg, arith);
                         },
                         Some((sym::map, m_recv, [m_arg], span, _)) => {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
@@ -5632,6 +5660,9 @@ impl Methods {
                 },
                 (sym::unwrap_or_default, []) => {
                     match method_call(recv) {
+                        Some((sym::checked_sub, lhs, [rhs], _, _)) => {
+                            manual_saturating_arithmetic::check_sub_unwrap_or_default(cx, expr, lhs, rhs);
+                        },
                         Some((sym::map, m_recv, [arg], span, _)) => {
                             manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
                         },

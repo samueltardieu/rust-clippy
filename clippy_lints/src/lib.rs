@@ -1,9 +1,10 @@
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(never_type)]
@@ -182,6 +183,7 @@ mod large_include_file;
 mod large_stack_arrays;
 mod large_stack_frames;
 mod legacy_numeric_constants;
+mod len_without_is_empty;
 mod len_zero;
 mod let_if_seq;
 mod let_underscore;
@@ -241,6 +243,7 @@ mod multiple_bound_locations;
 mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
+mod mutable_borrow_of_copy;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
@@ -359,6 +362,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -539,6 +543,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(unnecessary_mut_passed::UnnecessaryMutPassed)),
         Box::new(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default()),
         Box::new(move |_| Box::new(len_zero::LenZero::new(conf))),
+        Box::new(|_| Box::new(len_without_is_empty::LenWithoutIsEmpty)),
         Box::new(move |_| Box::new(attrs::Attributes::new(conf))),
         Box::new(|_| Box::new(blocks_in_conditions::BlocksInConditions)),
         Box::new(|_| Box::new(unicode::Unicode)),
@@ -850,6 +855,8 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
         Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
+        Box::new(|_| Box::new(mutable_borrow_of_copy::MutableBorrowOfCopy::new(conf))),
+        Box::new(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait)),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);
