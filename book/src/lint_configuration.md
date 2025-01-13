@@ -415,6 +415,16 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 * [`cargo_common_metadata`](https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata)
 
 
+## `check-copy-then-borrow-mut-in-tests`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`copy_then_borrow_mut`](https://rust-lang.github.io/rust-clippy/master/index.html#copy_then_borrow_mut)
+
+
 ## `check-incompatible-msrv-in-tests`
 Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
 
@@ -849,6 +859,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`same_item_push`](https://rust-lang.github.io/rust-clippy/master/index.html#same_item_push)
 * [`seek_from_current`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_from_current)
 * [`seek_rewind`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_rewind)
+* [`to_digit_is_some`](https://rust-lang.github.io/rust-clippy/master/index.html#to_digit_is_some)
 * [`transmute_ptr_to_ref`](https://rust-lang.github.io/rust-clippy/master/index.html#transmute_ptr_to_ref)
 * [`tuple_array_conversions`](https://rust-lang.github.io/rust-clippy/master/index.html#tuple_array_conversions)
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds)
