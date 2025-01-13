@@ -89,6 +89,7 @@ mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
+mod parsed_string_literals;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
 mod ptr_offset_with_cast;
@@ -474,6 +475,9 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `ok().expect(..)`.
+    ///
+    /// Note: This lint only triggers for code marked compatible
+    /// with versions of the compiler older than Rust 1.82.0.
     ///
     /// ### Why is this bad?
     /// Because you usually call `expect()` on the `Result`
@@ -1078,9 +1082,9 @@ declare_clippy_lint! {
     /// `T` implements `ToString` directly (like `&&str` or `&&String`).
     ///
     /// ### Why is this bad?
-    /// This bypasses the specialized implementation of
-    /// `ToString` and instead goes through the more expensive string formatting
-    /// facilities.
+    /// In versions of the compiler before Rust 1.82.0, this bypasses the specialized
+    /// implementation of`ToString` and instead goes through the more expensive string
+    /// formatting facilities.
     ///
     /// ### Example
     /// ```no_run
@@ -4637,6 +4641,36 @@ declare_clippy_lint! {
     "detects redundant calls to `Iterator::cloned`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for parsing string literals into types from the standard library
+    ///
+    /// ### Why is this bad?
+    /// Parsing known values at runtime consumes resources and forces to
+    /// unwrap the `Ok()` variant returned by `parse()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = "123".parse::<u32>().unwrap();
+    /// let addr1: Ipv4Addr = "10.2.3.4".parse().unwrap();
+    /// let addr2: Ipv4Addr = "127.0.0.1".parse().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = 123_u32;
+    /// let addr1: Ipv4Addr = Ipv4Addr::new(10, 2, 3, 4);
+    /// let addr2: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.92.0"]
+    pub PARSED_STRING_LITERALS,
+    perf,
+    "known-correct literal IP address parsing"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4818,6 +4852,7 @@ impl_lint_pass!(Methods => [
     SWAP_WITH_TEMPORARY,
     IP_CONSTANT,
     REDUNDANT_ITER_CLONED,
+   PARSED_STRING_LITERALS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -5514,6 +5549,9 @@ impl Methods {
                         Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
+                        Some((sym::parse, recv, [], _, _)) => {
+                            parsed_string_literals::check(cx, expr, recv, self.msrv);
+                        },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
@@ -5640,7 +5678,7 @@ impl Methods {
                     into_iter_on_ref::check(cx, expr, method_span, recv);
                 },
                 (sym::to_string, []) => {
-                    inefficient_to_string::check(cx, expr, recv);
+                    inefficient_to_string::check(cx, expr, recv, self.msrv);
                 },
                 (sym::unwrap, []) => {
                     unwrap_expect_used::check(

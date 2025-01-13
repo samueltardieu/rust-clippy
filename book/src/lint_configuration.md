@@ -462,6 +462,16 @@ fn main() {
 * [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
 
 
+## `check-mutable-borrow-of-copy-in-tests`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`mutable_borrow_of_copy`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_borrow_of_copy)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
@@ -845,6 +855,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`from_over_into`](https://rust-lang.github.io/rust-clippy/master/index.html#from_over_into)
 * [`if_then_some_else_none`](https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none)
 * [`index_refutable_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
+* [`inefficient_to_string`](https://rust-lang.github.io/rust-clippy/master/index.html#inefficient_to_string)
 * [`io_other_error`](https://rust-lang.github.io/rust-clippy/master/index.html#io_other_error)
 * [`iter_kv_map`](https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map)
 * [`legacy_numeric_constants`](https://rust-lang.github.io/rust-clippy/master/index.html#legacy_numeric_constants)
@@ -898,6 +909,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`unchecked_duration_subtraction`](https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_duration_subtraction)
 * [`uninlined_format_args`](https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args)
 * [`unnecessary_lazy_evaluations`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_evaluations)
+* [`unnecessary_unwrap`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_unwrap)
 * [`unnested_or_patterns`](https://rust-lang.github.io/rust-clippy/master/index.html#unnested_or_patterns)
 * [`unused_trait_names`](https://rust-lang.github.io/rust-clippy/master/index.html#unused_trait_names)
 * [`use_self`](https://rust-lang.github.io/rust-clippy/master/index.html#use_self)

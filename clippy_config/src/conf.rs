@@ -564,6 +564,9 @@ define_Conf! {
     /// [from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
     #[lints(inconsistent_struct_constructor)]
     check_inconsistent_struct_field_initializers: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(mutable_borrow_of_copy)]
+    check_mutable_borrow_of_copy_in_tests: bool = true,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
@@ -741,6 +744,7 @@ define_Conf! {
         from_over_into,
         if_then_some_else_none,
         index_refutable_slice,
+        inefficient_to_string,
         io_other_error,
         iter_kv_map,
         legacy_numeric_constants,
@@ -794,6 +798,7 @@ define_Conf! {
         unchecked_duration_subtraction,
         uninlined_format_args,
         unnecessary_lazy_evaluations,
+        unnecessary_unwrap,
         unnested_or_patterns,
         unused_trait_names,
         use_self,
