@@ -1,4 +1,6 @@
 #![feature(box_patterns)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(macro_metavar_expr)]
 #![feature(never_type)]
@@ -3255,6 +3257,8 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 None
             }
         })))
+    } else if go_up_by == 0 && path.is_empty() {
+        String::from("Self")
     } else {
         join_path_syms(repeat_n(kw::Super, go_up_by).chain(path))
     }
