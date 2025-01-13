@@ -464,12 +464,19 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(copy_then_borrow_mut)]
+    check_copy_then_borrow_mut_in_test: bool = true,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
     cognitive_complexity_threshold: u64 = 25,
+    /// Whether `if let` chains should be collapsed. This requires the use of the unstable
+    /// `let_chains` rustc feature.
+    #[lints(collapsible_if)]
+    collapse_let_chains: bool = false,
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
@@ -539,6 +546,10 @@ define_Conf! {
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
+    /// Whether collapsible `if` chains are linted if they contain comments inside the parts
+    /// that would be collapsed.
+    #[lints(collapsible_if)]
+    lint_commented_code: bool = true,
     /// Whether to suggest reordering constructor fields when initializers are present.
     ///
     /// Warnings produced by this configuration aren't necessarily fixed by just reordering the fields. Even if the
@@ -629,6 +640,7 @@ define_Conf! {
         manual_hash_one,
         manual_is_ascii_check,
         manual_let_else,
+        manual_midpoint,
         manual_non_exhaustive,
         manual_option_as_slice,
         manual_pattern_char_comparison,

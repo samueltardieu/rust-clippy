@@ -114,6 +114,7 @@ mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
+mod swap_with_temporary;
 mod type_id_on_box;
 mod unbuffered_bytes;
 mod uninit_assumed_init;
@@ -4484,6 +4485,34 @@ declare_clippy_lint! {
     "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `std::mem::swap` with temporary values.
+    ///
+    /// ### Why is this bad?
+    /// Storing a new value in place of a temporary value which will
+    /// be dropped right after the `swap` is inefficient. The same
+    /// result can be achieved by using an assignment, or dropping
+    /// the swap arguments.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     std::mem::swap(s, &mut String::from("replaced"));
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     *s = String::from("replaced");
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub SWAP_WITH_TEMPORARY,
+    complexity,
+    "detect swap with a temporary value"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4661,17 +4690,19 @@ impl_lint_pass!(Methods => [
     UNBUFFERED_BYTES,
     MANUAL_CONTAINS,
     IO_OTHER_ERROR,
+    SWAP_WITH_TEMPORARY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
 pub fn method_call<'tcx>(
     recv: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
-    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
-        if !args.iter().any(|e| e.span.from_expansion()) && !receiver.span.from_expansion() {
-            let name = path.ident.name.as_str();
-            return Some((name, receiver, args, path.ident.span, call_span));
-        }
+    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind
+        && !args.iter().any(|e| e.span.from_expansion())
+        && !receiver.span.from_expansion()
+    {
+        let name = path.ident.name.as_str();
+        return Some((name, receiver, args, path.ident.span, call_span));
     }
     None
 }
@@ -4691,6 +4722,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, &self.msrv);
                 io_other_error::check(cx, expr, func, args, &self.msrv);
+                swap_with_temporary::check(cx, expr, func, args);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;

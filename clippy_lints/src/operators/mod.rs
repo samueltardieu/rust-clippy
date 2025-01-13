@@ -12,6 +12,7 @@ mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
 mod manual_is_multiple_of;
+mod manual_midpoint;
 mod misrefactored_assign_op;
 mod modulo_arithmetic;
 mod modulo_one;
@@ -872,6 +873,30 @@ declare_clippy_lint! {
     "manual implementation of `.is_multiple_of()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual implementation of `midpoint`.
+    ///
+    /// ### Why is this bad?
+    /// Using `(x + y) / 2` might cause an overflow on the intermediate
+    /// addition result.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let a: u32 = 0;
+    /// let c = (a + 10) / 2;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let a: u32 = 0;
+    /// let c = u32::midpoint(a, 10);
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub MANUAL_MIDPOINT,
+    correctness,
+    "manual implementation of `midpoint` which can overflow"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -920,6 +945,7 @@ impl_lint_pass!(Operators => [
     PTR_EQ,
     SELF_ASSIGNMENT,
     MANUAL_IS_MULTIPLE_OF,
+    MANUAL_MIDPOINT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Operators {
@@ -937,6 +963,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     identity_op::check(cx, e, op.node, lhs, rhs);
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
                     ptr_eq::check(cx, e, op.node, lhs, rhs);
+                    manual_midpoint::check(cx, e, op.node, lhs, rhs, &self.msrv);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);
