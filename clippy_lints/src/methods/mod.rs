@@ -58,6 +58,7 @@ mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
+mod manual_repeat_n;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod manual_try_fold;
@@ -81,7 +82,6 @@ mod ok_expect;
 mod open_options;
 mod option_as_ref_cloned;
 mod option_as_ref_deref;
-mod option_map_or_err_ok;
 mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
@@ -2639,7 +2639,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.49.0"]
     pub MANUAL_OK_OR,
-    pedantic,
+    style,
     "finds patterns that can be encoded more concisely with `Option::ok_or`"
 }
 
@@ -3783,31 +3783,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.map_or(Err(_), Ok)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.ok_or(_)`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.map_or(Err("error"), Ok);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.ok_or("error");
-    /// ```
-    #[clippy::version = "1.76.0"]
-    pub OPTION_MAP_OR_ERR_OK,
-    style,
-    "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for iterators of `Result`s using `.filter(Result::is_ok).map(Result::unwrap)` that may
     /// be replaced with a `.flatten()` call.
     ///
@@ -4339,6 +4314,29 @@ declare_clippy_lint! {
     "using `NonZero::new_unchecked()` in a `const` context"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `repeat().take()` that can be replaced with `repeat_n()`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `repeat_n()` is more concise and clearer. Also, `repeat_n()` is sometimes faster than `repeat().take()` when the type of the element is non-trivial to clone because the original value can be reused for the last `.next()` call rather than always cloning.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::repeat(10).take(3);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::repeat_n(10, 3);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_REPEAT_N,
+    style,
+    "detect `repeat().take()` that can be replaced with `repeat_n()`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4486,7 +4484,6 @@ impl_lint_pass!(Methods => [
     WAKER_CLONE_WAKE,
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     JOIN_ABSOLUTE_PATHS,
-    OPTION_MAP_OR_ERR_OK,
     RESULT_FILTER_MAP,
     ITER_FILTER_IS_SOME,
     ITER_FILTER_IS_OK,
@@ -4506,6 +4503,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_MAP_OR,
     DOUBLE_ENDED_ITERATOR_LAST,
     USELESS_NONZERO_NEW_UNCHECKED,
+    MANUAL_REPEAT_N,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -5044,8 +5042,7 @@ impl Methods {
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
-                    option_map_or_err_ok::check(cx, expr, recv, def, map);
-                    unnecessary_map_or::check(cx, expr, recv, def, map, &self.msrv);
+                    unnecessary_map_or::check(cx, expr, recv, def, map, span, &self.msrv);
                 },
                 ("map_or_else", [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
@@ -5176,6 +5173,7 @@ impl Methods {
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
                 ("take", [arg]) => {
                     iter_out_of_bounds::check_take(cx, expr, recv, arg);
+                    manual_repeat_n::check(cx, expr, recv, arg, &self.msrv);
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
