@@ -19,6 +19,7 @@ mod collapsible_str_replace;
 mod double_ended_iterator_last;
 mod drain_collect;
 mod err_expect;
+mod exit;
 mod expect_fun_call;
 mod extend_with_drain;
 mod filetype_is_file;
@@ -78,6 +79,7 @@ mod map_flatten;
 mod map_identity;
 mod map_or_identity;
 mod map_unwrap_or;
+mod map_unwrap_or_default;
 mod map_unwrap_or_else;
 mod map_with_unused_argument_over_ranges;
 mod mut_mutex_lock;
@@ -97,6 +99,7 @@ mod option_map_or_none;
 mod option_zip_none;
 mod or_fun_call;
 mod or_then_unwrap;
+mod parsed_string_literals;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
 mod ptr_offset_by_literal;
@@ -623,6 +626,54 @@ declare_clippy_lint! {
     pub ERR_EXPECT,
     style,
     r#"using `.err().expect("")` when `.expect_err("")` can be used"#
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects calls to the `exit()` function that are not in the `main` function. Calls to `exit()`
+    /// immediately terminate the program.
+    ///
+    /// ### Why restrict this?
+    /// `exit()` immediately terminates the program with no information other than an exit code.
+    /// This provides no means to troubleshoot a problem, and may be an unexpected side effect.
+    ///
+    /// Codebases may use this lint to require that all exits are performed either by panicking
+    /// (which produces a message, a code location, and optionally a backtrace)
+    /// or by calling `exit()` from `main()` (which is a single place to look).
+    ///
+    /// ### Good example
+    /// ```no_run
+    /// fn main() {
+    ///     std::process::exit(0);
+    /// }
+    /// ```
+    ///
+    /// ### Bad example
+    /// ```no_run
+    /// fn main() {
+    ///     other_function();
+    /// }
+    ///
+    /// fn other_function() {
+    ///     std::process::exit(0);
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```ignore
+    /// // To provide a stacktrace and additional information
+    /// panic!("message");
+    ///
+    /// // or a main method with a return
+    /// fn main() -> Result<(), i32> {
+    ///     Ok(())
+    /// }
+    /// ```
+    #[clippy::version = "1.41.0"]
+    pub EXIT,
+    restriction,
+    "detects `std::process::exit` calls outside of `main`"
 }
 
 declare_clippy_lint! {
@@ -2440,12 +2491,12 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or
-    /// `result.map(_).unwrap_or_else(_)`.
+    /// Checks the usage of `map(_).unwrap_or(_)`, `map(_).unwrap_or_default()`
+    /// or `map(_).unwrap_or_else(_)` for `Option` and `Result` types.
     ///
     /// ### Why is this bad?
     /// Readability, these can be written more concisely (resp.) as
-    /// `option.map_or(_, _)`, `option.map_or_else(_, _)` and `result.map_or_else(_, _)`.
+    /// `map_or(_, _)`, `map_or_default(_)` or `map_or_else(_, _)`.
     ///
     /// ### Known problems
     /// The order of the arguments is not in execution order
@@ -2457,6 +2508,7 @@ declare_clippy_lint! {
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map(|a| a + 1).unwrap_or(0);
     /// option.map(|a| a > 10).unwrap_or(false);
+    /// result.map(|a| vec![a]).unwrap_or_default();
     /// result.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     ///
@@ -2467,12 +2519,13 @@ declare_clippy_lint! {
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map_or(0, |a| a + 1);
     /// option.is_some_and(|a| a > 10);
+    /// result.map_or_default(|a| vec![a]);
     /// result.map_or_else(some_function, |a| a + 1);
     /// ```
     #[clippy::version = "1.45.0"]
     pub MAP_UNWRAP_OR,
     pedantic,
-    "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`"
+    "using `.map(f).unwrap_or(a)`, `map(f).unwrap_or_default()` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)`, `map_or_default(f)` or `map_or_else(a, f)`"
 }
 
 declare_clippy_lint! {
@@ -3070,6 +3123,36 @@ declare_clippy_lint! {
     pub OR_THEN_UNWRAP,
     complexity,
     "checks for `.or(…).unwrap()` calls to Options and Results."
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for parsing string literals into types from the standard library
+    ///
+    /// ### Why is this bad?
+    /// Parsing known values at runtime consumes resources and forces to
+    /// unwrap the `Ok()` variant returned by `parse()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = "123".parse::<u32>().unwrap();
+    /// let addr1: Ipv4Addr = "10.2.3.4".parse().unwrap();
+    /// let addr2: Ipv4Addr = "127.0.0.1".parse().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = 123_u32;
+    /// let addr1: Ipv4Addr = Ipv4Addr::new(10, 2, 3, 4);
+    /// let addr2: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.95.0"]
+    pub PARSED_STRING_LITERALS,
+    complexity,
+    "literal parsing at run-time rather than compile-time"
 }
 
 declare_clippy_lint! {
@@ -4970,6 +5053,7 @@ impl_lint_pass!(Methods => [
     DOUBLE_ENDED_ITERATOR_LAST,
     DRAIN_COLLECT,
     ERR_EXPECT,
+    EXIT,
     EXPECT_FUN_CALL,
     EXPECT_USED,
     EXTEND_WITH_DRAIN,
@@ -5053,6 +5137,7 @@ impl_lint_pass!(Methods => [
     OPTION_ZIP_NONE,
     OR_FUN_CALL,
     OR_THEN_UNWRAP,
+    PARSED_STRING_LITERALS,
     PATH_BUF_PUSH_OVERWRITE,
     PATH_ENDS_WITH_EXT,
     PTR_OFFSET_BY_LITERAL,
@@ -5180,6 +5265,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if let ExprKind::Call(func, _) = expr.kind {
+            // The functions from this block perform their own macro context checks
+            exit::check(cx, expr, func);
+        }
+
         if expr.span.from_expansion() {
             return;
         }
@@ -5861,6 +5951,9 @@ impl Methods {
                         Some((sym::get_mut, recv, [get_arg], _, _)) => {
                             get_unwrap::check(cx, expr, recv, get_arg, true);
                         },
+                        Some((sym::parse, inner_recv, [], _, _)) => {
+                            parsed_string_literals::check(cx, expr, inner_recv, recv, self.msrv);
+                        },
                         Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
@@ -5897,6 +5990,7 @@ impl Methods {
                         },
                         Some((sym::map, m_recv, [arg], span, _)) => {
                             manual_is_variant_and::check_map_unwrap_or_default(cx, expr, m_recv, arg, span, self.msrv);
+                            map_unwrap_or_default::check(cx, expr, recv, m_recv, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(
