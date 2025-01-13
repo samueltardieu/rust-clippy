@@ -563,22 +563,31 @@ define_Conf! {
     /// [from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
     #[lints(inconsistent_struct_constructor)]
     check_inconsistent_struct_field_initializers: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(mutable_borrow_of_copy)]
+    check_mutable_borrow_of_copy_in_tests: bool = true,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
-    /// The maximum cognitive complexity a function can have
-    #[lints(cognitive_complexity)]
-    cognitive_complexity_threshold: u64 = 25,
-    /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
-    ///
-    /// Use the Cognitive Complexity lint instead.
-    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
-    cyclomatic_complexity_threshold: u64 = 25,
     /// The list of disallowed macros, written as fully qualified paths.
+    ///
+    /// **Fields:**
+    /// - `path` (required): the fully qualified path to the macro that should be disallowed
+    /// - `reason` (optional): explanation why this macro is disallowed
+    /// - `replacement` (optional): suggested alternative macro
+    /// - `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+    ///   if the path doesn't exist, instead of emitting an error
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_macros)]
     disallowed_macros: Vec<DisallowedPath> = Vec::new(),
     /// The list of disallowed methods, written as fully qualified paths.
+    ///
+    /// **Fields:**
+    /// - `path` (required): the fully qualified path to the method that should be disallowed
+    /// - `reason` (optional): explanation why this method is disallowed
+    /// - `replacement` (optional): suggested alternative method
+    /// - `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+    ///   if the path doesn't exist, instead of emitting an error
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_methods)]
     disallowed_methods: Vec<DisallowedPath> = Vec::new(),
@@ -588,6 +597,13 @@ define_Conf! {
     #[lints(disallowed_names)]
     disallowed_names: Vec<String> = DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect(),
     /// The list of disallowed types, written as fully qualified paths.
+    ///
+    /// **Fields:**
+    /// - `path` (required): the fully qualified path to the type that should be disallowed
+    /// - `reason` (optional): explanation why this type is disallowed
+    /// - `replacement` (optional): suggested alternative type
+    /// - `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+    ///   if the path doesn't exist, instead of emitting an error
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_types)]
     disallowed_types: Vec<DisallowedPath> = Vec::new(),
@@ -641,9 +657,9 @@ define_Conf! {
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
-    /// Whether collapsible `if` chains are linted if they contain comments inside the parts
+    /// Whether collapsible `if` and `else if` chains are linted if they contain comments inside the parts
     /// that would be collapsed.
-    #[lints(collapsible_if)]
+    #[lints(collapsible_else_if, collapsible_if)]
     lint_commented_code: bool = false,
     /// Whether to suggest reordering constructor fields when initializers are present.
     /// DEPRECATED CONFIGURATION: lint-inconsistent-struct-field-initializers

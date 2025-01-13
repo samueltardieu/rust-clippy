@@ -2,7 +2,7 @@
 // Use that command to update this file and do not edit by hand.
 // Manual edits will be overwritten.
 
-pub static LINTS: &[&crate::LintInfo] = &[
+pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
@@ -78,7 +78,6 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::checked_conversions::CHECKED_CONVERSIONS_INFO,
     crate::cloned_ref_to_slice_refs::CLONED_REF_TO_SLICE_REFS_INFO,
     crate::coerce_container_to_any::COERCE_CONTAINER_TO_ANY_INFO,
-    crate::cognitive_complexity::COGNITIVE_COMPLEXITY_INFO,
     crate::collapsible_if::COLLAPSIBLE_ELSE_IF_INFO,
     crate::collapsible_if::COLLAPSIBLE_IF_INFO,
     crate::collection_is_never_read::COLLECTION_IS_NEVER_READ_INFO,
@@ -112,6 +111,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::disallowed_names::DISALLOWED_NAMES_INFO,
     crate::disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS_INFO,
     crate::disallowed_types::DISALLOWED_TYPES_INFO,
+    crate::doc::DOC_BROKEN_LINK_INFO,
     crate::doc::DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS_INFO,
     crate::doc::DOC_INCLUDE_WITHOUT_CFG_INFO,
     crate::doc::DOC_LAZY_CONTINUATION_INFO,
@@ -533,6 +533,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::mut_key::MUTABLE_KEY_TYPE_INFO,
     crate::mut_mut::MUT_MUT_INFO,
     crate::mut_reference::UNNECESSARY_MUT_PASSED_INFO,
+    crate::mutable_borrow_of_copy::MUTABLE_BORROW_OF_COPY_INFO,
     crate::mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL_INFO,
     crate::mutex_atomic::MUTEX_ATOMIC_INFO,
     crate::mutex_atomic::MUTEX_INTEGER_INFO,
@@ -591,6 +592,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::operators::IMPOSSIBLE_COMPARISONS_INFO,
     crate::operators::INEFFECTIVE_BIT_MASK_INFO,
     crate::operators::INTEGER_DIVISION_INFO,
+    crate::operators::MANUAL_IS_MULTIPLE_OF_INFO,
     crate::operators::MANUAL_MIDPOINT_INFO,
     crate::operators::MISREFACTORED_ASSIGN_OP_INFO,
     crate::operators::MODULO_ARITHMETIC_INFO,
@@ -742,6 +744,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::unicode::UNICODE_NOT_NFC_INFO,
     crate::uninhabited_references::UNINHABITED_REFERENCES_INFO,
     crate::uninit_vec::UNINIT_VEC_INFO,
+    crate::unit_as_impl_trait::UNIT_AS_IMPL_TRAIT_INFO,
     crate::unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD_INFO,
     crate::unit_types::LET_UNIT_VALUE_INFO,
     crate::unit_types::UNIT_ARG_INFO,

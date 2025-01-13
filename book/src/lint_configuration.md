@@ -462,6 +462,16 @@ fn main() {
 * [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
 
 
+## `check-mutable-borrow-of-copy-in-tests`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`mutable_borrow_of_copy`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_borrow_of_copy)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
@@ -475,18 +485,15 @@ Whether to also run the listed lints on private items.
 * [`unnecessary_safety_doc`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_safety_doc)
 
 
-## `cognitive-complexity-threshold`
-The maximum cognitive complexity a function can have
-
-**Default Value:** `25`
-
----
-**Affected lints:**
-* [`cognitive_complexity`](https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity)
-
-
 ## `disallowed-macros`
 The list of disallowed macros, written as fully qualified paths.
+
+**Fields:**
+- `path` (required): the fully qualified path to the macro that should be disallowed
+- `reason` (optional): explanation why this macro is disallowed
+- `replacement` (optional): suggested alternative macro
+- `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+  if the path doesn't exist, instead of emitting an error
 
 **Default Value:** `[]`
 
@@ -497,6 +504,13 @@ The list of disallowed macros, written as fully qualified paths.
 
 ## `disallowed-methods`
 The list of disallowed methods, written as fully qualified paths.
+
+**Fields:**
+- `path` (required): the fully qualified path to the method that should be disallowed
+- `reason` (optional): explanation why this method is disallowed
+- `replacement` (optional): suggested alternative method
+- `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+  if the path doesn't exist, instead of emitting an error
 
 **Default Value:** `[]`
 
@@ -519,6 +533,13 @@ default configuration of Clippy. By default, any configuration will replace the 
 
 ## `disallowed-types`
 The list of disallowed types, written as fully qualified paths.
+
+**Fields:**
+- `path` (required): the fully qualified path to the type that should be disallowed
+- `reason` (optional): explanation why this type is disallowed
+- `replacement` (optional): suggested alternative type
+- `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+  if the path doesn't exist, instead of emitting an error
 
 **Default Value:** `[]`
 
@@ -651,13 +672,14 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 
 
 ## `lint-commented-code`
-Whether collapsible `if` chains are linted if they contain comments inside the parts
+Whether collapsible `if` and `else if` chains are linted if they contain comments inside the parts
 that would be collapsed.
 
 **Default Value:** `false`
 
 ---
 **Affected lints:**
+* [`collapsible_else_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_else_if)
 * [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
 
 
