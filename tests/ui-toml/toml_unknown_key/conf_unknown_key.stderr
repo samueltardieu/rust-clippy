@@ -31,9 +31,11 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            await-holding-invalid-types
            blacklisted-names
            cargo-ignore-publish
+           check-copy-then-borrow-mut-in-test
            check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
+           collapse-let-chains
            cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
@@ -48,7 +50,9 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           ignore-msrv-check-for
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -57,6 +61,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
@@ -124,9 +129,11 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            await-holding-invalid-types
            blacklisted-names
            cargo-ignore-publish
+           check-copy-then-borrow-mut-in-test
            check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
+           collapse-let-chains
            cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
@@ -141,7 +148,9 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           ignore-msrv-check-for
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -150,6 +159,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
@@ -217,9 +227,11 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            await-holding-invalid-types
            blacklisted-names
            cargo-ignore-publish
+           check-copy-then-borrow-mut-in-test
            check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
+           collapse-let-chains
            cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
@@ -234,7 +246,9 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           ignore-msrv-check-for
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -243,6 +257,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings

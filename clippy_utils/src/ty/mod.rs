@@ -17,6 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
@@ -30,7 +31,7 @@ use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
-use std::iter;
+use std::{iter, mem};
 
 use crate::{def_path_def_ids, match_def_path, path_res};
 
@@ -128,10 +129,10 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                             // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
                             // so we check the term for `U`.
                             ty::ClauseKind::Projection(projection_predicate) => {
-                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
-                                    if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
-                                        return true;
-                                    }
+                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack()
+                                    && contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen)
+                                {
+                                    return true;
                                 }
                             },
                             _ => (),
@@ -337,20 +338,20 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
-                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
-                    if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
-                        return true;
-                    }
+                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+                    && cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use)
+                {
+                    return true;
                 }
             }
             false
         },
         ty::Dynamic(binder, _, _) => {
             for predicate in *binder {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
-                    if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
-                        return true;
-                    }
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
+                    && cx.tcx.has_attr(trait_ref.def_id, sym::must_use)
+                {
+                    return true;
                 }
             }
             false
@@ -1375,4 +1376,12 @@ pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
             .then(|| args.type_at(0)),
         _ => None,
     }
+}
+
+/// Checks if the adjustments contain a mutable dereference of a `ManuallyDrop<_>`.
+pub fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
+    adjustments.iter().any(|a| {
+        let ty = mem::replace(&mut ty, a.target);
+        matches!(a.kind, Adjust::Deref(Some(op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
+    })
 }

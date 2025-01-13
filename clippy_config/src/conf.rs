@@ -471,6 +471,9 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(copy_then_borrow_mut)]
+    check_copy_then_borrow_mut_in_test: bool = true,
     /// Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
     #[lints(incompatible_msrv)]
     check_incompatible_msrv_in_tests: bool = false,
@@ -480,6 +483,10 @@ define_Conf! {
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
     cognitive_complexity_threshold: u64 = 25,
+    /// Whether `if let` chains should be collapsed. This requires the use of the unstable
+    /// `let_chains` rustc feature.
+    #[lints(collapsible_if)]
+    collapse_let_chains: bool = false,
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
@@ -546,9 +553,24 @@ define_Conf! {
     /// A list of paths to types that should be treated as if they do not contain interior mutability
     #[lints(borrow_interior_mutable_const, declare_interior_mutable_const, ifs_same_cond, mutable_key_type)]
     ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()]),
+    /// A list of path to items that should not be checked for a compatible MSRV. This can be used to ignore
+    /// MSRV checks for code which is gated by a feature which depends on the version of the Rust compiler.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// # Ignore those as we use them only when our `modern_compiler` feature is active.
+    /// ignore-msrv-check-for = [ "str::split_once", "std::option::Option::as_slice" ]
+    /// ```
+    #[lints(incompatible_msrv)]
+    ignore_msrv_check_for: Vec<String> = Vec::new(),
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
+    /// Whether collapsible `if` chains are linted if they contain comments inside the parts
+    /// that would be collapsed.
+    #[lints(collapsible_if)]
+    lint_commented_code: bool = true,
     /// Whether to suggest reordering constructor fields when initializers are present.
     ///
     /// Warnings produced by this configuration aren't necessarily fixed by just reordering the fields. Even if the
@@ -593,6 +615,9 @@ define_Conf! {
     /// The maximum number of bounds a trait can have to be linted
     #[lints(type_repetition_in_bounds)]
     max_trait_bounds: u64 = 3,
+    /// The smallest number of bits masked with `&` which will be replaced by `.is_multiple_of()`.
+    #[lints(manual_is_multiple_of)]
+    min_and_mask_size: u8 = 3,
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
     #[lints(min_ident_chars)]
     min_ident_chars_threshold: u64 = 1,
