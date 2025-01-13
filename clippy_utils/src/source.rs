@@ -13,8 +13,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, FileNameDisplayPreference, Pos, RelativeBytePos, SourceFile, SourceFileAndLine,
-    Span, SpanData, SyntaxContext, hygiene,
+    BytePos, DUMMY_SP, DesugaringKind, Pos, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
+    SyntaxContext, hygiene,
 };
 use std::borrow::Cow;
 use std::fmt;
@@ -268,7 +268,7 @@ fn map_range(
         debug_assert!(
             range.start <= text.len() && range.end <= text.len(),
             "Range `{range:?}` is outside the source file (file `{}`, length `{}`)",
-            src.sf.name.display(FileNameDisplayPreference::Local),
+            src.sf.name.prefer_local_unconditionally(),
             text.len(),
         );
         debug_assert!(range.start <= range.end, "Range `{range:?}` has overlapping bounds");
@@ -572,8 +572,13 @@ fn snippet_with_applicability_sess<'a>(
 }
 
 /// Converts a span to a code snippet. Returns `None` if not available.
+#[allow(clippy::unnecessary_wraps)]
 pub fn snippet_opt(sess: &impl HasSession, span: Span) -> Option<String> {
-    sess.sess().source_map().span_to_snippet(span).ok()
+    // Experiment: fail loudly if the snippet cannot be obtained
+    match sess.sess().source_map().span_to_snippet(span) {
+        Ok(v) => Some(v),
+        Err(e) => panic!("Error when getting snippet for {span:?}: {e:?}"),
+    }
 }
 
 /// Converts a span (from a block) to a code snippet if available, otherwise use default.

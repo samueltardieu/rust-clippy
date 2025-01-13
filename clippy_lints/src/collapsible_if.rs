@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
+use clippy_utils::source::{IntoSpan as _, SpanRangeExt as _, snippet, snippet_block_with_applicability};
 use clippy_utils::{can_use_if_let_chains, span_contains_non_whitespace, sym, tokenize_with_text};
 use rustc_ast::{BinOpKind, MetaItemInner};
 use rustc_errors::Applicability;
@@ -267,6 +267,9 @@ impl LateLintPass<'_> for CollapsibleIf {
             && !expr.span.from_expansion()
         {
             if let Some(else_) = else_
+                // Short circuit if both `if` branches contain only a single `if {..} else {}`, as
+                // collapsing such blocks can lead to less readable code (#4971)
+                && !(single_inner_if_else(then) && single_inner_if_else(else_))
                 && let ExprKind::Block(else_, None) = else_.kind
             {
                 self.check_collapsible_else_if(cx, then.span, else_);
@@ -277,6 +280,19 @@ impl LateLintPass<'_> for CollapsibleIf {
                 self.check_collapsible_if_if(cx, expr, cond, then);
             }
         }
+    }
+}
+
+/// Returns true if `expr` is a block that contains only one `if {..} else {}` statement
+fn single_inner_if_else(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Block(block, None) = expr.kind
+        && let Some(inner_expr) = expr_block(block)
+        && let ExprKind::If(_, _, else_) = inner_expr.kind
+        && else_.is_some()
+    {
+        true
+    } else {
+        false
     }
 }
 
