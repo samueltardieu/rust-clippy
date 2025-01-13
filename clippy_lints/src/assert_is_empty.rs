@@ -5,8 +5,8 @@ use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::ty::{self, Ty};
@@ -65,7 +65,7 @@ declare_clippy_lint! {
     /// assert_eq!(items, [] as [i32; 0]);
     /// assert_ne!(items, [] as [i32; 0]);
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub ASSERT_IS_EMPTY,
     pedantic,
     "asserting on emptiness without showing the asserted value on failure"

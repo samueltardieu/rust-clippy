@@ -10,7 +10,7 @@ use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
 use rustc_abi::Size;
 use rustc_apfloat::Float as _;
-use rustc_apfloat::ieee::{Half, Quad};
+use rustc_apfloat::ieee::Quad;
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
@@ -19,11 +19,11 @@ use rustc_hir::{
 };
 use rustc_lexer::{FrontmatterAllowed, tokenize};
 use rustc_lint::LateContext;
-use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::{Scalar, alloc_range};
+use rustc_middle::mir::{self, ConstValue};
+use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::{self, FloatTy, IntTy, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Symbol, SyntaxContext};
+use rustc_span::{Symbol, SyntaxContext, bug, span_bug};
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -41,16 +41,14 @@ pub enum Constant {
     Char(char),
     /// An integer's bit representation.
     Int(u128),
-    /// An `f16` bitcast to a `u16`.
-    // FIXME(f16_f128): use `f16` once builtins are available on all host tools platforms.
-    F16(u16),
+    /// An `f16`.
+    F16(f16),
     /// An `f32`.
     F32(f32),
     /// An `f64`.
     F64(f64),
     /// An `f128` bitcast to a `u128`.
-    // FIXME(f16_f128): use `f128` once builtins are available on all host tools platforms.
-    F128(u128),
+    F128(f128),
     /// `true` or `false`.
     Bool(bool),
     /// An array of constants.
@@ -172,8 +170,7 @@ impl Hash for Constant {
                 i.hash(state);
             },
             Self::F16(f) => {
-                // FIXME(f16_f128): once conversions to/from `f128` are available on all platforms,
-                f.hash(state);
+                f64::from(f).to_bits().hash(state);
             },
             Self::F32(f) => {
                 f64::from(f).to_bits().hash(state);
@@ -182,7 +179,7 @@ impl Hash for Constant {
                 f.to_bits().hash(state);
             },
             Self::F128(f) => {
-                f.hash(state);
+                f.to_bits().hash(state);
             },
             Self::Bool(b) => {
                 b.hash(state);
@@ -284,14 +281,9 @@ impl Constant {
         self
     }
 
-    fn parse_f16(s: &str) -> Self {
-        let f: Half = s.parse().unwrap();
-        Self::F16(f.to_bits().try_into().unwrap())
-    }
-
     fn parse_f128(s: &str) -> Self {
         let f: Quad = s.parse().unwrap();
-        Self::F128(f.to_bits())
+        Self::F128(f128::from_bits(f.to_bits()))
     }
 
     pub fn new_numeric_min<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Self> {
@@ -397,18 +389,20 @@ impl Constant {
 
     pub fn is_pos_infinity(&self) -> bool {
         match *self {
-            // FIXME(f16_f128): add f16 and f128 when constants are available
+            Constant::F16(x) => x == f16::INFINITY,
             Constant::F32(x) => x == f32::INFINITY,
             Constant::F64(x) => x == f64::INFINITY,
+            Constant::F128(x) => x == f128::INFINITY,
             _ => false,
         }
     }
 
     pub fn is_neg_infinity(&self) -> bool {
         match *self {
-            // FIXME(f16_f128): add f16 and f128 when constants are available
+            Constant::F16(x) => x == f16::NEG_INFINITY,
             Constant::F32(x) => x == f32::NEG_INFINITY,
             Constant::F64(x) => x == f64::NEG_INFINITY,
+            Constant::F128(x) => x == f128::NEG_INFINITY,
             _ => false,
         }
     }
@@ -423,14 +417,14 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n.get()),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
-            // FIXME(f16_f128): just use `parse()` directly when available for `f16`/`f128`
-            FloatTy::F16 => Constant::parse_f16(is.as_str()),
+            FloatTy::F16 => Constant::F16(is.as_str().parse().unwrap()),
             FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
             FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
+            // FIXME(f16_f128): just use `parse()` directly when available for `f128`
             FloatTy::F128 => Constant::parse_f128(is.as_str()),
         },
         LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
-            ty::Float(FloatTy::F16) => Constant::parse_f16(is.as_str()),
+            ty::Float(FloatTy::F16) => Constant::F16(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F128) => Constant::parse_f128(is.as_str()),
@@ -778,7 +772,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             QPath::Resolved(None, path)
                 if path.span.ctxt() == self.ctxt.get()
                     && path.segments.iter().all(|s| self.ctxt.get() == s.ident.span.ctxt())
-                    && let Res::Def(DefKind::Const { .. }, did) = path.res
+                    && let Res::Def(DefKind::Const, did) = path.res
                     && (matches!(
                         self.tcx.get_diagnostic_name(did),
                         Some(
@@ -866,18 +860,16 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && ty.span.ctxt() == self.ctxt.get()
                     && ty_name.ident.span.ctxt() == self.ctxt.get()
                     && matches!(ty_path.res, Res::PrimTy(_))
-                    && let Some((DefKind::AssocConst { .. }, did)) = self.typeck.type_dependent_def(id)
+                    && let Some((DefKind::AssocConst, did)) = self.typeck.type_dependent_def(id)
                     && self.tcx.inherent_impl_of_assoc(did).is_some() =>
             {
                 did
             },
-            // TODO: revisit when feature `min_generic_const_args` is stabilized. In the meantime,
+            // TODO: revisit when feature `gca_min_const_items` is stabilized. In the meantime,
             // `TyCtxt::const_eval_resolve()` will trigger an ICE when evaluating the body of the
             // `type const` definition.
-            _ if let Res::Def(
-                DefKind::Const { is_type_const: false } | DefKind::AssocConst { is_type_const: false },
-                did,
-            ) = self.typeck.qpath_res(qpath, id) =>
+            _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id)
+                && !self.tcx.is_direct_const(did) =>
             {
                 self.source.set(ConstantSource::NonLocal);
                 did
@@ -1056,7 +1048,20 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 },
                 _ => None,
             },
-            // FIXME(f16_f128): add these types when binary operations are available on all platforms
+            (Constant::F16(l), Some(Constant::F16(r))) => match op {
+                BinOpKind::Add => Some(Constant::F16(l + r)),
+                BinOpKind::Sub => Some(Constant::F16(l - r)),
+                BinOpKind::Mul => Some(Constant::F16(l * r)),
+                BinOpKind::Div => Some(Constant::F16(l / r)),
+                BinOpKind::Rem => Some(Constant::F16(l % r)),
+                BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                _ => None,
+            },
             (Constant::F32(l), Some(Constant::F32(r))) => match op {
                 BinOpKind::Add => Some(Constant::F32(l + r)),
                 BinOpKind::Sub => Some(Constant::F32(l - r)),
@@ -1077,6 +1082,20 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 BinOpKind::Mul => Some(Constant::F64(l * r)),
                 BinOpKind::Div => Some(Constant::F64(l / r)),
                 BinOpKind::Rem => Some(Constant::F64(l % r)),
+                BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                _ => None,
+            },
+            (Constant::F128(l), Some(Constant::F128(r))) => match op {
+                BinOpKind::Add => Some(Constant::F128(l + r)),
+                BinOpKind::Sub => Some(Constant::F128(l - r)),
+                BinOpKind::Mul => Some(Constant::F128(l * r)),
+                BinOpKind::Div => Some(Constant::F128(l / r)),
+                BinOpKind::Rem => Some(Constant::F128(l % r)),
                 BinOpKind::Eq => Some(Constant::Bool(l == r)),
                 BinOpKind::Ne => Some(Constant::Bool(l != r)),
                 BinOpKind::Lt => Some(Constant::Bool(l < r)),
@@ -1106,10 +1125,10 @@ pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue, ty: Ty<'tcx>) -> O
         (ConstValue::Scalar(Scalar::Int(int)), _) => match ty.kind() {
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.to_bits(int.size()))),
-            ty::Float(FloatTy::F16) => Some(Constant::F16(int.into())),
+            ty::Float(FloatTy::F16) => Some(Constant::F16(f16::from_bits(int.into()))),
             ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(int.into()))),
             ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(int.into()))),
-            ty::Float(FloatTy::F128) => Some(Constant::F128(int.into())),
+            ty::Float(FloatTy::F128) => Some(Constant::F128(f128::from_bits(int.into()))),
             ty::RawPtr(_, _) => Some(Constant::RawPtr(int.to_bits(int.size()))),
             _ => None,
         },
@@ -1129,10 +1148,10 @@ pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue, ty: Ty<'tcx>) -> O
                 let range = alloc_range(offset + size * idx, size);
                 let val = alloc.read_scalar(&tcx, range, /* read_provenance */ false).ok()?;
                 res.push(match flt {
-                    FloatTy::F16 => Constant::F16(val.to_u16().discard_err()?),
+                    FloatTy::F16 => Constant::F16(f16::from_bits(val.to_u16().discard_err()?)),
                     FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().discard_err()?)),
                     FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().discard_err()?)),
-                    FloatTy::F128 => Constant::F128(val.to_u128().discard_err()?),
+                    FloatTy::F128 => Constant::F128(f128::from_bits(val.to_u128().discard_err()?)),
                 });
             }
             Some(Constant::Vec(res))
@@ -1187,7 +1206,7 @@ pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: Syntax
 pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match ct_rhs {
         ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
-        ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
+        ConstItemRhs::Direct(const_arg) => match const_arg.kind {
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
             | ConstArgKind::Tup(..)

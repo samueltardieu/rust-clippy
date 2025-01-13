@@ -33,7 +33,7 @@ impl<'sm> HasSourceMap<'sm> for &'sm SourceMap {
 impl<'sm> HasSourceMap<'sm> for &'sm Session {
     #[inline]
     fn source_map(self) -> &'sm SourceMap {
-        self.source_map()
+        self.early_sess.source_map()
     }
 }
 impl<'sm> HasSourceMap<'sm> for TyCtxt<'sm> {
@@ -586,8 +586,13 @@ fn snippet_with_applicability_sm<'a>(
 }
 
 /// Converts a span to a code snippet. Returns `None` if not available.
+#[expect(clippy::unnecessary_wraps)]
 pub fn snippet_opt<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Option<String> {
-    sm.source_map().span_to_snippet(span).ok()
+    // Experiment: fail loudly if the snippet cannot be obtained
+    match sm.source_map().span_to_snippet(span) {
+        Ok(v) => Some(v),
+        Err(e) => panic!("Error when getting snippet for {span:?}: {e:?}"),
+    }
 }
 
 /// Converts a span (from a block) to a code snippet if available, otherwise use default.
