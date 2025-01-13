@@ -795,8 +795,8 @@ impl Fragments<'_> {
     /// get the span for the markdown range. Note that this function is not cheap, use it with
     /// caution.
     #[must_use]
-    fn span(&self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
-        source_span_for_markdown_range(cx.tcx, self.doc, &range, self.fragments)
+    fn span(self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
+        source_span_for_markdown_range(cx.tcx, self.doc, &range, self.fragments).map(|(sp, _)| sp)
     }
 }
 
@@ -1232,7 +1232,6 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
     if range.end < range.start {
         return None;
@@ -1249,7 +1248,9 @@ fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
             b'[' => {
                 start = Some(i + offset);
             },
-            b']' if let Some(start) = start => {
+            b']' if let Some(start) = start
+                && doc.as_bytes().get(i + offset + 1) == Some(&b':') =>
+            {
                 return Some(start..i + offset + 1);
             },
             _ => {},
