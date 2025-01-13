@@ -82,7 +82,6 @@ mod ok_expect;
 mod open_options;
 mod option_as_ref_cloned;
 mod option_as_ref_deref;
-mod option_map_or_err_ok;
 mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
@@ -2643,7 +2642,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.49.0"]
     pub MANUAL_OK_OR,
-    pedantic,
+    style,
     "finds patterns that can be encoded more concisely with `Option::ok_or`"
 }
 
@@ -3787,31 +3786,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.map_or(Err(_), Ok)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.ok_or(_)`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.map_or(Err("error"), Ok);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.ok_or("error");
-    /// ```
-    #[clippy::version = "1.76.0"]
-    pub OPTION_MAP_OR_ERR_OK,
-    style,
-    "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for iterators of `Result`s using `.filter(Result::is_ok).map(Result::unwrap)` that may
     /// be replaced with a `.flatten()` call.
     ///
@@ -4368,7 +4342,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for string slices immediantly followed by `as_bytes`.
+    /// Checks for string slices immediately followed by `as_bytes`.
     ///
     /// ### Why is this bad?
     /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
@@ -4609,7 +4583,6 @@ impl_lint_pass!(Methods => [
     WAKER_CLONE_WAKE,
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     JOIN_ABSOLUTE_PATHS,
-    OPTION_MAP_OR_ERR_OK,
     RESULT_FILTER_MAP,
     ITER_FILTER_IS_SOME,
     ITER_FILTER_IS_OK,
@@ -5178,7 +5151,6 @@ impl Methods {
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
-                    option_map_or_err_ok::check(cx, expr, recv, def, map);
                     unnecessary_map_or::check(cx, expr, recv, def, map, span, &self.msrv);
                 },
                 ("map_or_else", [def, map]) => {
