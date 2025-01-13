@@ -6,8 +6,7 @@ use clippy_utils::sugg::has_enclosing_paren;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -62,16 +61,10 @@ impl<'tcx> LateLintPass<'tcx> for NegMultiply {
 }
 
 fn check_mul(cx: &LateContext<'_>, mul_expr: &Expr<'_>, lit: &Expr<'_>, exp: &Expr<'_>) {
-    const F16_ONE: u16 = 1.0_f16.to_bits();
-    const F128_ONE: u128 = 1.0_f128.to_bits();
     if let ExprKind::Lit(l) = lit.kind
         && matches!(
             consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)),
-            Constant::Int(1)
-                | Constant::F16(F16_ONE)
-                | Constant::F32(1.0)
-                | Constant::F64(1.0)
-                | Constant::F128(F128_ONE)
+            Constant::Int(1) | Constant::F16(1.0) | Constant::F32(1.0) | Constant::F64(1.0) | Constant::F128(1.0)
         )
         && cx.typeck_results().expr_ty(exp).is_numeric()
     {

@@ -26,9 +26,11 @@ fn main() {
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check } => fmt::run(UpdateMode::from_check(check)),
-        DevCommand::UpdateLints { check } => {
-            new_parse_cx(|cx| cx.parse_lint_decls().gen_decls(UpdateMode::from_check(check)));
-        },
+        DevCommand::UpdateLints { check } => new_parse_cx(|cx| {
+            let data = cx.parse_lint_decls();
+            cx.dcx.exit_on_err();
+            data.gen_decls(UpdateMode::from_check(check));
+        }),
         DevCommand::NewLint {
             pass,
             name,
@@ -36,10 +38,21 @@ fn main() {
             r#type,
             msrv,
         } => match new_lint::create(clippy.version, pass, &name, &category, r#type.as_deref(), msrv) {
-            Ok(()) => new_parse_cx(|cx| cx.parse_lint_decls().gen_decls(UpdateMode::Change)),
+            Ok(()) => new_parse_cx(|cx| {
+                let data = cx.parse_lint_decls();
+                cx.dcx.exit_on_err();
+                data.gen_decls(UpdateMode::Change);
+            }),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {
+            SetupSubcommand::Emacs { remove, force_override } => {
+                if remove {
+                    setup::emacs::remove_dir_locals();
+                } else {
+                    setup::emacs::setup_dir_locals(force_override);
+                }
+            },
             SetupSubcommand::Intellij { remove, repo_path } => {
                 if remove {
                     setup::intellij::remove_rustc_src();
@@ -69,6 +82,7 @@ fn main() {
             },
         },
         DevCommand::Remove(RemoveCommand { subcommand }) => match subcommand {
+            RemoveSubcommand::Emacs => setup::emacs::remove_dir_locals(),
             RemoveSubcommand::Intellij => setup::intellij::remove_rustc_src(),
             RemoveSubcommand::GitHook => setup::git_hook::remove_hook(),
             RemoveSubcommand::VscodeTasks => setup::vscode::remove_tasks(),
@@ -273,6 +287,15 @@ struct SetupCommand {
 
 #[derive(Subcommand)]
 enum SetupSubcommand {
+    /// Add a `.dir-locals.el` so that Emacs can use `rustic-mode` and `eglot`
+    Emacs {
+        #[arg(long)]
+        /// Remove the `.dir-locals.el` file created by `cargo dev setup emacs`
+        remove: bool,
+        #[arg(long, short)]
+        /// Forces the override of an existing git pre-commit hook
+        force_override: bool,
+    },
     /// Alter dependencies so Intellij Rust can find rustc internals
     Intellij {
         #[arg(long)]
@@ -333,6 +356,8 @@ struct RemoveCommand {
 
 #[derive(Subcommand)]
 enum RemoveSubcommand {
+    /// Remove the `.dir-locals.el` file created by `cargo dev setup emacs`
+    Emacs,
     /// Remove the dependencies added with 'cargo dev setup intellij'
     Intellij,
     /// Remove the pre-commit git hook

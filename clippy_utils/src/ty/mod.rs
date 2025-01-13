@@ -1,6 +1,6 @@
 //! Util methods for [`rustc_middle::ty`]
 
-#![allow(clippy::module_name_repetitions)]
+#![expect(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
 use itertools::Itertools as _;
@@ -9,9 +9,10 @@ use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, FnDecl, LangItem};
+use rustc_hir::{Expr, ExprKind, FnDecl};
 use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::LateContext;
@@ -44,7 +45,7 @@ pub use type_certainty::expr_type_is_certain;
 
 /// Lower a [`hir::Ty`] to a [`rustc_middle::ty::Ty`].
 pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-    cx.maybe_typeck_results()
+    cx.typeck_results
         .filter(|results| results.hir_owner == hir_ty.hir_id.owner)
         .and_then(|results| results.node_type_opt(hir_ty.hir_id))
         .unwrap_or_else(|| lower_ty(cx.tcx, hir_ty))
@@ -345,7 +346,7 @@ pub fn opt_must_use_path<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<M
     }
 }
 
-/// Describe a [`MustUsePath`] returned by [`is_must_use_ty`].
+/// Describe a [`MustUsePath`] returned by [`opt_must_use_path`].
 pub fn describe_must_use_type(cx: &LateContext<'_>, path: &MustUsePath) -> String {
     describe_must_use_type_inner(cx, path, "", "", 1)
 }
@@ -593,8 +594,9 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
     match layout.layout.backend_repr {
         BackendRepr::Scalar(s) => s.is_uninit_valid(),
         BackendRepr::ScalarPair { a, b, .. } => a.is_uninit_valid() && b.is_uninit_valid(),
-        BackendRepr::SimdVector { element, count } => count == 0 || element.is_uninit_valid(),
-        BackendRepr::SimdScalableVector { element, .. } => element.is_uninit_valid(),
+        BackendRepr::SimdVector { element, count: _ } | BackendRepr::SimdScalableVector { element, .. } => {
+            element.is_uninit_valid()
+        },
         // Here validity is determined by the structural fields instead.
         BackendRepr::Memory { .. } => match &layout.layout.variants {
             Variants::Single { .. } => match &layout.layout.fields {
@@ -1162,9 +1164,11 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
     }
 }
 
-/// Returns whether `ty` is never-like; i.e., `!` (never) or an enum with zero variants.
-pub fn is_never_like(ty: Ty<'_>) -> bool {
-    ty.is_never() || (ty.is_enum() && ty.ty_adt_def().is_some_and(|def| def.variants().is_empty()))
+/// Returns whether `ty` is known to be uninhabited (`!`, `std::convert::Infallible`, `enum` with no
+/// variants, `struct` with uninhabited fields, …) from the module being currently linted.
+pub fn is_visibly_uninhabited<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.enclosing_body
+        .is_some_and(|body| !ty.is_inhabited_from(cx.tcx, cx.tcx.parent_module(body.hir_id), cx.typing_env()))
 }
 
 /// Makes the projection type for the named associated type in the given impl or trait impl.

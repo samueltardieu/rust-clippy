@@ -1,25 +1,27 @@
-#![feature(box_patterns)]
 #![feature(control_flow_into_value)]
+#![feature(deref_patterns)]
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
+#![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 #![allow(
+    clippy::literal_string_with_formatting_args,
     clippy::missing_docs_in_private_items,
-    clippy::must_use_candidate,
-    clippy::literal_string_with_formatting_args
+    clippy::must_use_candidate
 )]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
     rustc::internal
@@ -42,8 +44,8 @@ extern crate rustc_lint;
 extern crate rustc_middle;
 extern crate rustc_parse_format;
 extern crate rustc_resolve;
-extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 
@@ -135,7 +137,6 @@ mod eta_reduction;
 mod excessive_bools;
 mod excessive_nesting;
 mod exhaustive_items;
-mod exit;
 mod explicit_write;
 mod extra_unused_type_parameters;
 mod fallible_impl_from;
@@ -267,6 +268,7 @@ mod needless_for_each;
 mod needless_ifs;
 mod needless_late_init;
 mod needless_maybe_sized;
+mod needless_nonzero_get;
 mod needless_parens_on_range_literals;
 mod needless_pass_by_ref_mut;
 mod needless_pass_by_value;
@@ -376,6 +378,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -425,7 +428,7 @@ use rustc_middle::ty::TyCtxt;
 use utils::attr_collector::AttrStorage;
 
 pub fn explain(name: &str) -> i32 {
-    let target = format!("clippy::{name}");
+    let target = format!("clippy::{}", name.to_ascii_uppercase());
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
         println!("{}", sanitize_explanation(info.explanation));
         // Check if the lint has configuration
@@ -690,7 +693,6 @@ rustc_lint::late_lint_methods!(
         Default: default::Default = <default::Default>::default(),
         UnusedSelf: unused_self::UnusedSelf = unused_self::UnusedSelf::new(conf),
         DebugAssertWithMutCall: mutable_debug_assertion::DebugAssertWithMutCall = mutable_debug_assertion::DebugAssertWithMutCall,
-        Exit: exit::Exit = exit::Exit,
         ToDigitIsSome: to_digit_is_some::ToDigitIsSome = to_digit_is_some::ToDigitIsSome::new(conf),
         LargeStackArrays: large_stack_arrays::LargeStackArrays = large_stack_arrays::LargeStackArrays::new(conf),
         LargeConstArrays: large_const_arrays::LargeConstArrays = large_const_arrays::LargeConstArrays::new(conf),
@@ -871,6 +873,8 @@ rustc_lint::late_lint_methods!(
         RestWhenDestructuringStruct: rest_when_destructuring_struct::RestWhenDestructuringStruct = rest_when_destructuring_struct::RestWhenDestructuringStruct,
         BlockScrutinee: block_scrutinee::BlockScrutinee = block_scrutinee::BlockScrutinee,
         NonnullUncheckedOnBoxPtr: nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr = nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr::new(conf),
+        NeedlessNonzeroGet: needless_nonzero_get::NeedlessNonzeroGet = needless_nonzero_get::NeedlessNonzeroGet::new(conf),
+        UnitAsImplTrait: unit_as_impl_trait::UnitAsImplTrait = unit_as_impl_trait::UnitAsImplTrait,
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );

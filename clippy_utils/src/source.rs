@@ -1,6 +1,6 @@
 //! Utils for extracting, inspecting or transforming source code
 
-#![allow(clippy::module_name_repetitions)]
+#![expect(clippy::module_name_repetitions)]
 
 use std::sync::Arc;
 
@@ -553,8 +553,7 @@ pub fn snippet<'a, 'sm>(sm: impl HasSourceMap<'sm>, span: Span, default: &'a str
 ///
 /// - Applicability level `Unspecified` will never be changed.
 /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-/// - If the default value is used and the applicability level is `MachineApplicable`, change it to
-///   `HasPlaceholders`
+/// - If the default value is used and the applicability level is `MachineApplicable`, change it to `HasPlaceholders`
 ///
 /// If the span might realistically contain a macro call (e.g. `vec![]`), consider using
 /// [`snippet_with_context`] instead.
@@ -587,8 +586,13 @@ fn snippet_with_applicability_sm<'a>(
 }
 
 /// Converts a span to a code snippet. Returns `None` if not available.
+#[expect(clippy::unnecessary_wraps)]
 pub fn snippet_opt<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Option<String> {
-    sm.source_map().span_to_snippet(span).ok()
+    // Experiment: fail loudly if the snippet cannot be obtained
+    match sm.source_map().span_to_snippet(span) {
+        Ok(v) => Some(v),
+        Err(e) => panic!("Error when getting snippet for {span:?}: {e:?}"),
+    }
 }
 
 /// Converts a span (from a block) to a code snippet if available, otherwise use default.

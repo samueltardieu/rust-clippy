@@ -1,4 +1,4 @@
-#![allow(non_upper_case_globals)]
+#![expect(non_upper_case_globals)]
 
 use rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT;
 
@@ -437,6 +437,7 @@ generate! {
     module_name_repetitions,
     msrv,
     msrvs,
+    mul_add,
     mut_ptr,
     mutex,
     needless_return,
@@ -530,7 +531,6 @@ generate! {
     rsplitn_mut,
     rustc_errors,
     rustc_lint,
-    rustc_lint_defs,
     rustc_middle,
     rustc_span,
     rustfmt_skip,

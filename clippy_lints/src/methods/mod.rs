@@ -19,6 +19,7 @@ mod collapsible_str_replace;
 mod double_ended_iterator_last;
 mod drain_collect;
 mod err_expect;
+mod exit;
 mod expect_fun_call;
 mod extend_with_drain;
 mod filetype_is_file;
@@ -94,8 +95,10 @@ mod open_options;
 mod option_as_ref_cloned;
 mod option_as_ref_deref;
 mod option_map_or_none;
+mod option_zip_none;
 mod or_fun_call;
 mod or_then_unwrap;
+mod parsed_string_literals;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
 mod ptr_offset_by_literal;
@@ -162,9 +165,8 @@ use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::{contains_return, iter_input_pats, peel_blocks, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::TraitRef;
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
 use crate::matches::manual_filter;
@@ -385,7 +387,7 @@ declare_clippy_lint! {
     /// let (chunks, remainder) = slice.as_chunks::<2>();
     /// for chunk in chunks {}
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.98.0"]
     pub CHUNKS_EXACT_TO_AS_CHUNKS,
     style,
     "using `chunks_exact` with constant when `as_chunks` is more ergonomic"
@@ -623,6 +625,54 @@ declare_clippy_lint! {
     pub ERR_EXPECT,
     style,
     r#"using `.err().expect("")` when `.expect_err("")` can be used"#
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects calls to the `exit()` function that are not in the `main` function. Calls to `exit()`
+    /// immediately terminate the program.
+    ///
+    /// ### Why restrict this?
+    /// `exit()` immediately terminates the program with no information other than an exit code.
+    /// This provides no means to troubleshoot a problem, and may be an unexpected side effect.
+    ///
+    /// Codebases may use this lint to require that all exits are performed either by panicking
+    /// (which produces a message, a code location, and optionally a backtrace)
+    /// or by calling `exit()` from `main()` (which is a single place to look).
+    ///
+    /// ### Good example
+    /// ```no_run
+    /// fn main() {
+    ///     std::process::exit(0);
+    /// }
+    /// ```
+    ///
+    /// ### Bad example
+    /// ```no_run
+    /// fn main() {
+    ///     other_function();
+    /// }
+    ///
+    /// fn other_function() {
+    ///     std::process::exit(0);
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```ignore
+    /// // To provide a stacktrace and additional information
+    /// panic!("message");
+    ///
+    /// // or a main method with a return
+    /// fn main() -> Result<(), i32> {
+    ///     Ok(())
+    /// }
+    /// ```
+    #[clippy::version = "1.41.0"]
+    pub EXIT,
+    restriction,
+    "detects `std::process::exit` calls outside of `main`"
 }
 
 declare_clippy_lint! {
@@ -1775,7 +1825,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// # use std::ffi::CStr;
-    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// # mod libc { pub unsafe fn puts(_: *const std::ffi::c_char) {} }
     /// fn needs_cstr(_: &CStr) {}
     ///
     /// needs_cstr(CStr::from_bytes_with_nul(b"Hello\0").unwrap());
@@ -1784,7 +1834,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// # use std::ffi::CStr;
-    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// # mod libc { pub unsafe fn puts(_: *const std::ffi::c_char) {} }
     /// fn needs_cstr(_: &CStr) {}
     ///
     /// needs_cstr(c"Hello");
@@ -2981,6 +3031,28 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for calls of the form `Option::zip(_, None)` or `Option::zip(None, _)`.
+    ///
+    /// ### Why is this bad?
+    /// `Option::zip` with `None` always returns `None`.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// let foo = Some(5);
+    /// foo.zip(None);
+    /// ```
+    /// Use instead:
+    /// ```ignore
+    /// None
+    /// ```
+    #[clippy::version = "1.99.0"]
+    pub OPTION_ZIP_NONE,
+    suspicious,
+    "calling `.zip(None)` on an `Option` always returns `None`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
     /// `.or_insert(foo(..))` etc., and suggests to use `.or_else(|| foo(..))`,
     /// `.unwrap_or_else(|| foo(..))`, `.unwrap_or_default()` or `.or_default()`
@@ -3048,6 +3120,36 @@ declare_clippy_lint! {
     pub OR_THEN_UNWRAP,
     complexity,
     "checks for `.or(…).unwrap()` calls to Options and Results."
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for parsing string literals into types from the standard library
+    ///
+    /// ### Why is this bad?
+    /// Parsing known values at runtime consumes resources and forces to
+    /// unwrap the `Ok()` variant returned by `parse()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = "123".parse::<u32>().unwrap();
+    /// let addr1: Ipv4Addr = "10.2.3.4".parse().unwrap();
+    /// let addr2: Ipv4Addr = "127.0.0.1".parse().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = 123_u32;
+    /// let addr1: Ipv4Addr = Ipv4Addr::new(10, 2, 3, 4);
+    /// let addr2: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.95.0"]
+    pub PARSED_STRING_LITERALS,
+    complexity,
+    "literal parsing at run-time rather than compile-time"
 }
 
 declare_clippy_lint! {
@@ -4282,7 +4384,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `fold` when a more succinct alternative exists.
     /// Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
-    /// `sum` or `product`.
+    /// `sum` or `product`, and for folds over an `Option`'s iterator which could be
+    /// replaced by `map_or`.
     ///
     /// ### Why is this bad?
     /// Readability.
@@ -4290,11 +4393,15 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// (0..3).fold(false, |acc, x| acc || x > 2);
+    /// # let opt = Some(1);
+    /// opt.iter().fold(0, |acc, x| acc | x);
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// (0..3).any(|x| x > 2);
+    /// # let opt = Some(1);
+    /// opt.as_ref().map_or(0, |x| 0 | x);
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub UNNECESSARY_FOLD,
@@ -4430,37 +4537,41 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Converts some constructs mapping an Enum value for equality comparison.
+    /// Converts some constructs mapping an enum value for equality or variant checks.
     ///
     /// ### Why is this bad?
     /// Calls such as `opt.map_or(false, |val| val == 5)` are needlessly long and cumbersome,
     /// and can be reduced to, for example, `opt == Some(5)` assuming `opt` implements `PartialEq`.
     /// Also, calls such as `opt.map_or(true, |val| val == 5)` can be reduced to
     /// `opt.is_none_or(|val| val == 5)`.
+    /// Calls that map the two variants of a `Result` to opposite boolean constants can be
+    /// reduced to `is_ok()` or `is_err()`.
     /// This lint offers readability and conciseness improvements.
     ///
     /// ### Example
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    /// pub fn a(x: Option<i32>, result: Result<i32, i32>) -> (bool, bool, bool) {
     ///     (
     ///         x.map_or(false, |n| n == 5),
     ///         x.map_or(true, |n| n > 5),
+    ///         result.map_or_else(|_| false, |_| true),
     ///     )
     /// }
     /// ```
     /// Use instead:
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    /// pub fn a(x: Option<i32>, result: Result<i32, i32>) -> (bool, bool, bool) {
     ///     (
     ///         x == Some(5),
     ///         x.is_none_or(|n| n > 5),
+    ///         result.is_ok(),
     ///     )
     /// }
     /// ```
     #[clippy::version = "1.84.0"]
     pub UNNECESSARY_MAP_OR,
     style,
-    "reduce unnecessary calls to `.map_or(bool, …)`"
+    "reduce unnecessary calls to `.map_or(bool, …)` and `.map_or_else(…, …)`"
 }
 
 declare_clippy_lint! {
@@ -4939,6 +5050,7 @@ impl_lint_pass!(Methods => [
     DOUBLE_ENDED_ITERATOR_LAST,
     DRAIN_COLLECT,
     ERR_EXPECT,
+    EXIT,
     EXPECT_FUN_CALL,
     EXPECT_USED,
     EXTEND_WITH_DRAIN,
@@ -5019,8 +5131,10 @@ impl_lint_pass!(Methods => [
     OPTION_AS_REF_DEREF,
     OPTION_FILTER_MAP,
     OPTION_MAP_OR_NONE,
+    OPTION_ZIP_NONE,
     OR_FUN_CALL,
     OR_THEN_UNWRAP,
+    PARSED_STRING_LITERALS,
     PATH_BUF_PUSH_OVERWRITE,
     PATH_ENDS_WITH_EXT,
     PTR_OFFSET_BY_LITERAL,
@@ -5148,6 +5262,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if let ExprKind::Call(func, _) = expr.kind {
+            // The functions from this block perform their own macro context checks
+            exit::check(cx, expr, func);
+        }
+
         if expr.span.from_expansion() {
             return;
         }
@@ -5173,6 +5292,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     &self.unwrap_allowed_ids,
                     &self.unwrap_allowed_aliases,
                 );
+                option_zip_none::check_call(cx, expr, func, args);
             },
             ExprKind::MethodCall(..) => {
                 self.check_methods(cx, expr);
@@ -5521,7 +5641,7 @@ impl Methods {
                 },
                 (sym::fold, [init, acc]) => {
                     manual_try_fold::check(cx, expr, init, acc, call_span, self.msrv);
-                    unnecessary_fold::check(cx, expr, init, acc, span);
+                    unnecessary_fold::check(cx, expr, recv, init, acc, span);
                 },
                 (sym::for_each, [arg]) => match method_call(recv) {
                     Some((sym::inspect, _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
@@ -5639,6 +5759,7 @@ impl Methods {
                 (sym::map_or_else, [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
                     unnecessary_map_or_else::check(cx, expr, recv, def, map, call_span);
+                    unnecessary_map_or::check_map_or_else(cx, expr, recv, def, map);
                 },
                 (sym::next, []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {
@@ -5827,6 +5948,9 @@ impl Methods {
                         Some((sym::get_mut, recv, [get_arg], _, _)) => {
                             get_unwrap::check(cx, expr, recv, get_arg, true);
                         },
+                        Some((sym::parse, inner_recv, [], _, _)) => {
+                            parsed_string_literals::check(cx, expr, inner_recv, recv, self.msrv);
+                        },
                         Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
@@ -5995,6 +6119,9 @@ impl Methods {
                         &self.unwrap_allowed_aliases,
                         unwrap_expect_used::Variant::Unwrap,
                     );
+                },
+                (sym::zip, [arg]) => {
+                    option_zip_none::check_method(cx, expr, recv, arg);
                 },
                 _ => {},
             }
