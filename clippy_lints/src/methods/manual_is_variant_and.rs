@@ -174,19 +174,21 @@ fn emit_lint<'tcx>(
         (Flavor::Result, Op::Eq, bool_cst) => (false, "is_ok_and", !bool_cst),
         (Flavor::Result, Op::Ne, bool_cst) => (true, "is_ok_and", !bool_cst),
     };
-    span_lint_and_sugg(
-        cx,
-        MANUAL_IS_VARIANT_AND,
-        span,
-        format!("called `.map() {op} {pos}()`", pos = flavor.positive(),),
-        "use",
-        format!(
-            "{inversion}{recv}.{method}({body})",
-            inversion = if invert_expr { "!" } else { "" },
-            body = map_func.sugg(cx, invert_body, &mut app),
-        ),
-        app,
-    );
+    {
+        span_lint_and_sugg(
+            cx,
+            MANUAL_IS_VARIANT_AND,
+            span,
+            format!("called `.map() {op} {pos}()`", pos = flavor.positive(),),
+            "use",
+            format!(
+                "{inversion}{recv}.{method}({body})",
+                inversion = if invert_expr { "!" } else { "" },
+                body = map_func.sugg(cx, invert_body, &mut app),
+            ),
+            app,
+        );
+    };
 }
 
 pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {

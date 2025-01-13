@@ -79,7 +79,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbo
                 applicability,
             );
         }
-    } else if let Some(impl_id) = cx.tcx.impl_of_method(def_id)
+    } else if cx.tcx.trait_of_item(def_id).is_none()
+        && let Some(impl_id) = cx.tcx.impl_of_method(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
         && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Option | sym::Result))
     {
