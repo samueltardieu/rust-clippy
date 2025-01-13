@@ -3,7 +3,7 @@
 use clippy_config::Conf;
 use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::over;
 use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
@@ -48,13 +48,13 @@ declare_clippy_lint! {
 }
 
 pub struct UnnestedOrPatterns {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl UnnestedOrPatterns {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -69,10 +69,10 @@ impl EarlyLintPass for UnnestedOrPatterns {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if self.msrv.meets(msrvs::OR_PATTERNS) {
-            if let ast::ExprKind::Let(pat, _, _, _) = &e.kind {
-                lint_unnested_or_patterns(cx, pat);
-            }
+        if self.msrv.meets(msrvs::OR_PATTERNS)
+            && let ast::ExprKind::Let(pat, _, _, _) = &e.kind
+        {
+            lint_unnested_or_patterns(cx, pat);
         }
     }
 
@@ -88,7 +88,7 @@ impl EarlyLintPass for UnnestedOrPatterns {
         }
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }
 
 fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {

@@ -9,7 +9,7 @@ use clippy_utils::macros::{
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro};
+use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -215,7 +215,7 @@ impl<'tcx> FormatArgs<'tcx> {
         let ty_msrv_map = make_ty_msrv_map(tcx);
         Self {
             format_args,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             ignore_mixed: conf.allow_mixed_uninlined_format_args,
             ty_msrv_map,
         }
@@ -240,13 +240,11 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
 
             linter.check_templates();
 
-            if self.msrv.meets(msrvs::FORMAT_ARGS_CAPTURE) {
+            if self.msrv.meets(cx, msrvs::FORMAT_ARGS_CAPTURE) {
                 linter.check_uninlined_args();
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 struct FormatArgsExpr<'a, 'tcx> {
@@ -486,7 +484,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
 
     fn check_unnecessary_debug_formatting(&self, name: Symbol, value: &Expr<'tcx>) {
         let cx = self.cx;
-        if !value.span.from_expansion()
+        if !is_in_test(cx.tcx, value.hir_id)
+            && !value.span.from_expansion()
             && !is_from_proc_macro(cx, value)
             && let ty = cx.typeck_results().expr_ty(value)
             && self.can_display_format(ty)
@@ -542,7 +541,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         let ty = ty.peel_refs();
 
         if let Some(msrv) = self.ty_msrv_map.get(&ty)
-            && msrv.is_none_or(|msrv| self.msrv.meets(msrv))
+            && msrv.is_none_or(|msrv| self.msrv.meets(self.cx, msrv))
         {
             return true;
         }
@@ -553,7 +552,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             && implements_trait(self.cx, ty, deref_trait_id, &[])
             && let Some(target_ty) = self.cx.get_associated_type(ty, deref_trait_id, "Target")
             && let Some(msrv) = self.ty_msrv_map.get(&target_ty)
-            && msrv.is_none_or(|msrv| self.msrv.meets(msrv))
+            && msrv.is_none_or(|msrv| self.msrv.meets(self.cx, msrv))
         {
             return true;
         }

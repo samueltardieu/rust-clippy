@@ -35,7 +35,7 @@ fn main() {
             category,
             r#type,
             msrv,
-        } => match new_lint::create(&pass, &name, &category, r#type.as_deref(), msrv) {
+        } => match new_lint::create(pass, &name, &category, r#type.as_deref(), msrv) {
             Ok(()) => update_lints::update(utils::UpdateMode::Change),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
@@ -147,9 +147,9 @@ enum DevCommand {
     #[command(name = "new_lint")]
     /// Create a new lint and run `cargo dev update_lints`
     NewLint {
-        #[arg(short, long, value_parser = ["early", "late"], conflicts_with = "type", default_value = "late")]
+        #[arg(short, long, conflicts_with = "type", default_value = "late")]
         /// Specify whether the lint runs during the early or late pass
-        pass: String,
+        pass: new_lint::Pass,
         #[arg(
             short,
             long,
@@ -334,7 +334,7 @@ struct SyncCommand {
 #[derive(Subcommand)]
 enum SyncSubcommand {
     #[command(name = "update_nightly")]
-    /// Update nightly version in rust-toolchain and `clippy_utils`
+    /// Update nightly version in `rust-toolchain.toml` and `clippy_utils`
     UpdateNightly,
 }
 

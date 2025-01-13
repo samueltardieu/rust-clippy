@@ -4,6 +4,7 @@
     clippy::equatable_if_let,
     clippy::let_unit_value,
     clippy::redundant_locals,
+    clippy::manual_midpoint,
     clippy::manual_unwrap_or_default,
     clippy::manual_unwrap_or
 )]
@@ -328,5 +329,25 @@ fn issue11893() {
         writeln!(output, "{name:?}").unwrap();
     } else {
         panic!("Haven't thought about this condition.");
+    }
+}
+
+mod issue13964 {
+    #[derive(Debug)]
+    struct A(Option<String>);
+
+    fn foo(a: A) {
+        let _ = match a.0 {
+            Some(x) => x,
+            None => panic!("{a:?} is invalid."),
+        };
+    }
+
+    fn bar(a: A) {
+        let _ = if let Some(x) = a.0 {
+            x
+        } else {
+            panic!("{a:?} is invalid.")
+        };
     }
 }

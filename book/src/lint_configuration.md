@@ -458,6 +458,17 @@ The maximum cognitive complexity a function can have
 * [`cognitive_complexity`](https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity)
 
 
+## `collapse-let-chains`
+Whether `if let` chains should be collapsed. This requires the use of the unstable
+`let_chains` rustc feature.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
+
+
 ## `disallowed-macros`
 The list of disallowed macros, written as fully qualified paths.
 
@@ -623,6 +634,17 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 * [`result_large_err`](https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err)
 
 
+## `lint-commented-code`
+Whether collapsible `if` chains are linted if they contain comments inside the parts
+that would be collapsed.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
+
+
 ## `lint-inconsistent-struct-field-initializers`
 Whether to suggest reordering constructor fields when initializers are present.
 
@@ -723,6 +745,16 @@ The maximum number of bounds a trait can have to be linted
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds)
 
 
+## `min-and-mask-size`
+The smallest number of bits masked with `&` which will be replaced by `.is_multiple_of()`.
+
+**Default Value:** `3`
+
+---
+**Affected lints:**
+* [`manual_is_multiple_of`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_multiple_of)
+
+
 ## `min-ident-chars-threshold`
 Minimum chars an ident can have, anything below or equal to this will be linted.
 
@@ -748,6 +780,19 @@ crate. For example, `pub(crate)` items.
 The named groupings of different source item kinds within modules.
 
 **Default Value:** `[["modules", ["extern_crate", "mod", "foreign_mod"]], ["use", ["use"]], ["macros", ["macro"]], ["global_asm", ["global_asm"]], ["UPPER_SNAKE_CASE", ["static", "const"]], ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]], ["lower_snake_case", ["fn"]]]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
+## `module-items-ordered-within-groupings`
+Whether the items within module groups should be ordered alphabetically or not.
+
+This option can be configured to "all", "none", or a list of specific grouping names that should be checked
+(e.g. only "enums").
+
+**Default Value:** `"none"`
 
 ---
 **Affected lints:**
@@ -791,6 +836,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`manual_is_ascii_check`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check)
 * [`manual_let_else`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
+* [`manual_midpoint`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_midpoint)
 * [`manual_non_exhaustive`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive)
 * [`manual_option_as_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_option_as_slice)
 * [`manual_pattern_char_comparison`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_pattern_char_comparison)
@@ -815,6 +861,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`option_as_ref_deref`](https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref)
 * [`option_map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unwrap_or)
 * [`ptr_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr)
+* [`question_mark`](https://rust-lang.github.io/rust-clippy/master/index.html#question_mark)
 * [`redundant_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names)
 * [`redundant_static_lifetimes`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_static_lifetimes)
 * [`repeat_vec_with_capacity`](https://rust-lang.github.io/rust-clippy/master/index.html#repeat_vec_with_capacity)

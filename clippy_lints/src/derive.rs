@@ -384,7 +384,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
             .tcx
             .inherent_impls(def.did())
             .iter()
-            .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
+            .map(|imp_did| cx.tcx.hir_expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {
         span_lint_hir_and_then(
@@ -428,10 +428,10 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> Self::Result {
-        if let ExprKind::Block(block, _) = expr.kind {
-            if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
-                return ControlFlow::Break(());
-            }
+        if let ExprKind::Block(block, _) = expr.kind
+            && block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+        {
+            return ControlFlow::Break(());
         }
 
         walk_expr(self, expr)

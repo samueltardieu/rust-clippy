@@ -35,6 +35,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
+           collapse-let-chains
            cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
@@ -50,6 +51,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -58,9 +60,11 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
@@ -128,6 +132,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
+           collapse-let-chains
            cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
@@ -143,6 +148,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -151,9 +157,11 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
@@ -221,6 +229,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
+           collapse-let-chains
            cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
@@ -236,6 +245,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -244,9 +254,11 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-and-mask-size
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
