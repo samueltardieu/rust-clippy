@@ -3,6 +3,7 @@
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(macro_metavar_expr_concat)]
@@ -196,6 +197,7 @@ mod macro_use;
 mod main_recursion;
 mod manual_abs_diff;
 mod manual_assert;
+mod manual_assert_eq;
 mod manual_async_fn;
 mod manual_bits;
 mod manual_checked_ops;
@@ -209,6 +211,7 @@ mod manual_is_power_of_two;
 mod manual_let_else;
 mod manual_main_separator_str;
 mod manual_non_exhaustive;
+mod manual_noop_waker;
 mod manual_option_as_slice;
 mod manual_pop_if;
 mod manual_range_patterns;
@@ -364,6 +367,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -514,7 +518,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|| Box::new(visibility::Visibility)),
         Box::new(|| Box::new(multiple_bound_locations::MultipleBoundLocations)),
         Box::new(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers)),
-        Box::new(|| Box::new(byte_char_slices::ByteCharSlice)),
         Box::new(|| Box::new(cfg_not_test::CfgNotTest)),
         Box::new(|| Box::new(empty_line_after::EmptyLineAfter::new())),
         // add early passes here, used by `cargo dev new_lint`
@@ -865,6 +868,10 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(manual_take::ManualTake::new(conf))),
         Box::new(|_| Box::new(manual_checked_ops::ManualCheckedOps)),
         Box::new(move |tcx| Box::new(manual_pop_if::ManualPopIf::new(tcx, conf))),
+        Box::new(move |_| Box::new(manual_noop_waker::ManualNoopWaker::new(conf))),
+        Box::new(|_| Box::new(byte_char_slices::ByteCharSlice)),
+        Box::new(|_| Box::new(manual_assert_eq::ManualAssertEq)),
+        Box::new(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait)),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);

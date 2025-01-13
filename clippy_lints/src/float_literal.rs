@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{ExprUseNode, expr_use_ctxt, numeric_literal};
+use clippy_utils::{ExprUseNode, get_expr_use_site, numeric_literal};
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -97,9 +97,14 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
-                FloatTy::F16 | FloatTy::F128 => {
+                FloatTy::F128 => {
                     // FIXME(f16_f128): do a check like the others when parsing is available
                     return;
+                },
+                FloatTy::F16 => {
+                    let value = sym_str.parse::<f16>().unwrap();
+
+                    (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
                 },
                 FloatTy::F32 => {
                     let value = sym_str.parse::<f32>().unwrap();
@@ -143,7 +148,10 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 }
             } else if digits > max as usize && count_digits(&float_str) < digits {
                 if digits >= self.const_literal_digits_threshold
-                    && matches!(expr_use_ctxt(cx, expr).use_node(cx), ExprUseNode::ConstStatic(_))
+                    && matches!(
+                        get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx),
+                        ExprUseNode::ConstStatic(_)
+                    )
                 {
                     // If a big enough number of digits is specified and it's a constant
                     // we assume the user is definining a constant, and excessive precision is ok

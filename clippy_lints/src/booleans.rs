@@ -30,6 +30,8 @@ declare_clippy_lint! {
     /// Ignores short circuiting behavior of `||` and
     /// `&&`. Ignores `|`, `&` and `^`.
     ///
+    /// Creates a big toll on performance, **only enable sporadically**
+    ///
     /// ### Example
     /// ```ignore
     /// if a && true {}
@@ -43,7 +45,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NONMINIMAL_BOOL,
-    complexity,
+    pedantic,
     "boolean expressions that can be written more concisely"
 }
 
@@ -57,6 +59,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// Ignores short circuiting behavior.
+    /// Creates a big toll on performance, **only enable sporadically**
     ///
     /// ### Example
     /// ```rust,ignore
@@ -70,7 +73,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub OVERLY_COMPLEX_BOOL_EXPR,
-    correctness,
+    pedantic,
     "boolean expressions that contain terminals which can be eliminated"
 }
 
@@ -294,8 +297,9 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
             return Err("contains never type".to_owned());
         }
 
+        let ctxt = e.span.ctxt();
         for (n, expr) in self.terminals.iter().enumerate() {
-            if eq_expr_value(self.cx, e, expr) {
+            if eq_expr_value(self.cx, ctxt, e, expr) {
                 #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
@@ -304,8 +308,8 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
                 && implements_ord(self.cx, e_lhs)
                 && let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.kind
                 && negate(e_binop.node) == Some(expr_binop.node)
-                && eq_expr_value(self.cx, e_lhs, expr_lhs)
-                && eq_expr_value(self.cx, e_rhs, expr_rhs)
+                && eq_expr_value(self.cx, ctxt, e_lhs, expr_lhs)
+                && eq_expr_value(self.cx, ctxt, e_rhs, expr_rhs)
             {
                 #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
@@ -357,7 +361,7 @@ impl SuggestContext<'_, '_, '_> {
                         if app != Applicability::MachineApplicable {
                             return None;
                         }
-                        let _cannot_fail = write!(&mut self.output, "{}", &(!snip));
+                        let _cannot_fail = write!(&mut self.output, "{}", !snip);
                     }
                 },
                 True | False | Not(_) => {
