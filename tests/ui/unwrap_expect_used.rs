@@ -1,5 +1,5 @@
-#![warn(clippy::unwrap_used, clippy::expect_used)]
-#![allow(clippy::unnecessary_literal_unwrap)]
+#![warn(clippy::expect_used, clippy::unwrap_used)]
+#![expect(clippy::unnecessary_literal_unwrap)]
 #![feature(never_type)]
 
 use std::convert::Infallible;
@@ -94,4 +94,37 @@ fn issue16484() {
     Result::expect(res, "error message"); //~ expect_used
     Result::unwrap_err(res); //~ unwrap_used
     Result::expect_err(res, "error message"); //~ expect_used
+}
+
+#[derive(Clone, Debug)]
+struct S {
+    x: std::convert::Infallible,
+    y: u32,
+}
+
+pub mod child {
+    mod grandchild {
+        pub type PrivatelyUninhabited = std::convert::Infallible;
+    }
+    #[derive(Clone, Debug)]
+    pub struct T(grandchild::PrivatelyUninhabited);
+}
+
+#[derive(Clone, Debug)]
+struct T {
+    x: child::T,
+    y: u32,
+}
+
+fn f(s: Result<String, S>, t: Result<String, T>) {
+    // Check that the compiler sees the `S` type as uninhabited (because of its `x` field)
+    let Ok(_) = s.clone();
+    // Do not lint: `s` is necessarily `Ok` as shown above
+    _ = s.clone().unwrap();
+    _ = s.clone().expect("uninhabited struct is inhabited");
+    // Here, we cannot see that T is uninhabited
+    _ = t.clone().unwrap();
+    //~^ unwrap_used
+    _ = t.clone().expect("we do not know much about `T`'s `x` field");
+    //~^ expect_used
 }

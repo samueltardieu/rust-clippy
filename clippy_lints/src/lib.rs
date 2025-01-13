@@ -3,6 +3,7 @@
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(macro_metavar_expr_concat)]
@@ -12,14 +13,14 @@
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 #![allow(
+    clippy::literal_string_with_formatting_args,
     clippy::missing_docs_in_private_items,
-    clippy::must_use_candidate,
-    clippy::literal_string_with_formatting_args
+    clippy::must_use_candidate
 )]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
     rustc::internal
@@ -131,7 +132,6 @@ mod eta_reduction;
 mod excessive_bools;
 mod excessive_nesting;
 mod exhaustive_items;
-mod exit;
 mod explicit_write;
 mod extra_unused_type_parameters;
 mod fallible_impl_from;
@@ -687,7 +687,6 @@ rustc_lint::late_lint_methods!(
         Default: default::Default = <default::Default>::default(),
         UnusedSelf: unused_self::UnusedSelf = unused_self::UnusedSelf::new(conf),
         DebugAssertWithMutCall: mutable_debug_assertion::DebugAssertWithMutCall = mutable_debug_assertion::DebugAssertWithMutCall,
-        Exit: exit::Exit = exit::Exit,
         ToDigitIsSome: to_digit_is_some::ToDigitIsSome = to_digit_is_some::ToDigitIsSome::new(conf),
         LargeStackArrays: large_stack_arrays::LargeStackArrays = large_stack_arrays::LargeStackArrays::new(conf),
         LargeConstArrays: large_const_arrays::LargeConstArrays = large_const_arrays::LargeConstArrays::new(conf),
