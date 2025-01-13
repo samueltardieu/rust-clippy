@@ -3,6 +3,7 @@
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(macro_metavar_expr_concat)]
@@ -11,7 +12,11 @@
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![expect(clippy::literal_string_with_formatting_args, clippy::must_use_candidate)]
+#![allow(
+    clippy::literal_string_with_formatting_args,
+    clippy::missing_docs_in_private_items,
+    clippy::must_use_candidate
+)]
 #![warn(
     rust_2018_idioms,
     trivial_casts,
@@ -130,7 +135,6 @@ mod eta_reduction;
 mod excessive_bools;
 mod excessive_nesting;
 mod exhaustive_items;
-mod exit;
 mod explicit_write;
 mod extra_unused_type_parameters;
 mod fallible_impl_from;
@@ -370,6 +374,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -414,7 +419,7 @@ mod zombie_processes;
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::{Lint, is_lint_pass_required};
+use rustc_lint::is_lint_pass_required;
 use rustc_middle::ty::TyCtxt;
 use utils::attr_collector::AttrStorage;
 
@@ -684,7 +689,6 @@ rustc_lint::late_lint_methods!(
         Default: default::Default = <default::Default>::default(),
         UnusedSelf: unused_self::UnusedSelf = unused_self::UnusedSelf::new(conf),
         DebugAssertWithMutCall: mutable_debug_assertion::DebugAssertWithMutCall = mutable_debug_assertion::DebugAssertWithMutCall,
-        Exit: exit::Exit = exit::Exit,
         ToDigitIsSome: to_digit_is_some::ToDigitIsSome = to_digit_is_some::ToDigitIsSome::new(conf),
         LargeStackArrays: large_stack_arrays::LargeStackArrays = large_stack_arrays::LargeStackArrays::new(conf),
         LargeConstArrays: large_const_arrays::LargeConstArrays = large_const_arrays::LargeConstArrays::new(conf),
@@ -864,6 +868,7 @@ rustc_lint::late_lint_methods!(
         RedundantElse: redundant_else::RedundantElse = redundant_else::RedundantElse,
         RestWhenDestructuringStruct: rest_when_destructuring_struct::RestWhenDestructuringStruct = rest_when_destructuring_struct::RestWhenDestructuringStruct,
         BlockScrutinee: block_scrutinee::BlockScrutinee = block_scrutinee::BlockScrutinee,
+        UnitAsImplTrait: unit_as_impl_trait::UnitAsImplTrait = unit_as_impl_trait::UnitAsImplTrait,
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );
