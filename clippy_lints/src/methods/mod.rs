@@ -90,6 +90,7 @@ mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
+mod parsed_string_literals;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
 mod ptr_offset_with_cast;
@@ -474,6 +475,9 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `ok().expect(..)`.
+    ///
+    /// Note: This lint only triggers for code marked compatible
+    /// with versions of the compiler older than Rust 1.82.0.
     ///
     /// ### Why is this bad?
     /// Because you usually call `expect()` on the `Result`
@@ -1078,9 +1082,9 @@ declare_clippy_lint! {
     /// `T` implements `ToString` directly (like `&&str` or `&&String`).
     ///
     /// ### Why is this bad?
-    /// This bypasses the specialized implementation of
-    /// `ToString` and instead goes through the more expensive string formatting
-    /// facilities.
+    /// In versions of the compiler before Rust 1.82.0, this bypasses the specialized
+    /// implementation of`ToString` and instead goes through the more expensive string
+    /// formatting facilities.
     ///
     /// ### Example
     /// ```no_run
@@ -4637,6 +4641,36 @@ declare_clippy_lint! {
     "detects redundant calls to `Iterator::cloned`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for parsing string literals into types from the standard library
+    ///
+    /// ### Why is this bad?
+    /// Parsing known values at runtime consumes resources and forces to
+    /// unwrap the `Ok()` variant returned by `parse()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = "123".parse::<u32>().unwrap();
+    /// let addr1: Ipv4Addr = "10.2.3.4".parse().unwrap();
+    /// let addr2: Ipv4Addr = "127.0.0.1".parse().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let number = 123_u32;
+    /// let addr1: Ipv4Addr = Ipv4Addr::new(10, 2, 3, 4);
+    /// let addr2: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.92.0"]
+    pub PARSED_STRING_LITERALS,
+    perf,
+    "known-correct literal IP address parsing"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4818,6 +4852,7 @@ impl_lint_pass!(Methods => [
     SWAP_WITH_TEMPORARY,
     IP_CONSTANT,
     REDUNDANT_ITER_CLONED,
+   PARSED_STRING_LITERALS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4840,8 +4875,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        self.check_methods(cx, expr);
-
         match expr.kind {
             ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
@@ -4852,24 +4885,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 swap_with_temporary::check(cx, expr, func, args);
                 ip_constant::check(cx, expr, func, args);
             },
-            ExprKind::MethodCall(method_call, receiver, args, _) => {
-                let method_span = method_call.ident.span;
-                or_fun_call::check(cx, expr, method_span, method_call.ident.name, receiver, args, self.msrv);
-                expect_fun_call::check(
-                    cx,
-                    &self.format_args,
-                    expr,
-                    method_span,
-                    method_call.ident.name,
-                    receiver,
-                    args,
-                );
-                clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
-                clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
-                inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
-                single_char_add_str::check(cx, expr, receiver, args);
-                into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
+            ExprKind::MethodCall(..) => {
+                self.check_methods(cx, expr);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
@@ -5504,6 +5521,9 @@ impl Methods {
                         Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
+                        Some((sym::parse, inner_recv, [], _, _)) => {
+                            parsed_string_literals::check(cx, expr, inner_recv, recv, self.msrv);
+                        },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
@@ -5589,7 +5609,17 @@ impl Methods {
         }
         // Handle method calls whose receiver and arguments may come from expansion
         if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
+            let method_span = path.ident.span;
+
+            // Those methods do their own method name checking as they deal with multiple methods.
+            or_fun_call::check(cx, expr, method_span, path.ident.name, recv, args, self.msrv);
+            unnecessary_to_owned::check(cx, expr, path.ident.name, recv, args, self.msrv);
+
             match (path.ident.name, args) {
+                (sym::clone, []) => {
+                    clone_on_ref_ptr::check(cx, expr, recv);
+                    clone_on_copy::check(cx, expr, recv);
+                },
                 (sym::expect, [_]) => {
                     unwrap_expect_used::check(
                         cx,
@@ -5600,6 +5630,7 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                    expect_fun_call::check(cx, &self.format_args, expr, method_span, recv, args);
                 },
                 (sym::expect_err, [_]) => {
                     unwrap_expect_used::check(
@@ -5611,6 +5642,15 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                },
+                (sym::insert_str | sym::push_str, _) => {
+                    single_char_add_str::check(cx, expr, recv, args);
+                },
+                (sym::into_iter, []) => {
+                    into_iter_on_ref::check(cx, expr, method_span, recv);
+                },
+                (sym::to_string, []) => {
+                    inefficient_to_string::check(cx, expr, recv, self.msrv);
                 },
                 (sym::unwrap, []) => {
                     unwrap_expect_used::check(

@@ -4,6 +4,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(never_type)]
@@ -100,7 +101,6 @@ mod cognitive_complexity;
 mod collapsible_if;
 mod collection_is_never_read;
 mod comparison_chain;
-mod copies;
 mod copy_iterator;
 mod crate_in_macro_def;
 mod create_dir;
@@ -158,6 +158,7 @@ mod future_not_send;
 mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
+mod ifs;
 mod ignored_unit_patterns;
 mod impl_hash_with_borrow_str_and_bytes;
 mod implicit_hasher;
@@ -252,6 +253,7 @@ mod multiple_bound_locations;
 mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
+mod mutable_borrow_of_copy;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
@@ -369,6 +371,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -549,7 +552,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(empty_enum::EmptyEnum));
     store.register_late_pass(|_| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
     store.register_late_pass(|_| Box::<regex::Regex>::default());
-    store.register_late_pass(move |tcx| Box::new(copies::CopyAndPaste::new(tcx, conf)));
+    store.register_late_pass(move |tcx| Box::new(ifs::CopyAndPaste::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(copy_iterator::CopyIterator));
     let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| Box::new(format::UselessFormat::new(format_args.clone())));
@@ -831,5 +834,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
     store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
     store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
+    store.register_late_pass(|_| Box::new(mutable_borrow_of_copy::MutableBorrowOfCopy::new(conf)));
+    store.register_late_pass(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
