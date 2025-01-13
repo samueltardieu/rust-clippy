@@ -462,6 +462,16 @@ fn main() {
 * [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
 
 
+## `check-mutable-borrow-of-copy-in-tests`
+Whether to search for mutable borrows of freshly copied data in tests.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`mutable_borrow_of_copy`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_borrow_of_copy)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
@@ -669,6 +679,16 @@ A list of paths to types that should be treated as if they do not contain interi
 * [`declare_interior_mutable_const`](https://rust-lang.github.io/rust-clippy/master/index.html#declare_interior_mutable_const)
 * [`ifs_same_cond`](https://rust-lang.github.io/rust-clippy/master/index.html#ifs_same_cond)
 * [`mutable_key_type`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type)
+
+
+## `inherent-impl-lint-scope`
+Sets the scope ("crate", "file", or "module") in which duplicate inherent `impl` blocks for the same type are linted.
+
+**Default Value:** `"crate"`
+
+---
+**Affected lints:**
+* [`multiple_inherent_impl`](https://rust-lang.github.io/rust-clippy/master/index.html#multiple_inherent_impl)
 
 
 ## `large-error-threshold`

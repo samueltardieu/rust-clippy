@@ -33,6 +33,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
+           check-mutable-borrow-of-copy-in-tests
            check-private-items
            cognitive-complexity-threshold
            const-literal-digits-threshold
@@ -49,6 +50,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           inherent-impl-lint-scope
            large-error-threshold
            lint-commented-code
            literal-representation-threshold
@@ -129,6 +131,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
+           check-mutable-borrow-of-copy-in-tests
            check-private-items
            cognitive-complexity-threshold
            const-literal-digits-threshold
@@ -145,6 +148,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           inherent-impl-lint-scope
            large-error-threshold
            lint-commented-code
            literal-representation-threshold
@@ -225,6 +229,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
+           check-mutable-borrow-of-copy-in-tests
            check-private-items
            cognitive-complexity-threshold
            const-literal-digits-threshold
@@ -241,6 +246,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           inherent-impl-lint-scope
            large-error-threshold
            lint-commented-code
            literal-representation-threshold

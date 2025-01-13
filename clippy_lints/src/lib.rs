@@ -28,9 +28,6 @@
     rustc::internal
 )]
 
-// FIXME: switch to something more ergonomic here, once available.
-// (Currently there is no way to opt into sysroot crates without `extern crate`.)
-extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
@@ -54,8 +51,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
-extern crate smallvec;
-extern crate thin_vec;
 
 #[macro_use]
 extern crate clippy_utils;
@@ -252,6 +247,7 @@ mod multiple_bound_locations;
 mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
+mod mutable_borrow_of_copy;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
@@ -370,6 +366,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -589,7 +586,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_early_pass(|| Box::new(suspicious_operation_groupings::SuspiciousOperationGroupings));
     store.register_late_pass(|_| Box::new(suspicious_trait_impl::SuspiciousImpl));
     store.register_late_pass(|_| Box::new(map_unit_fn::MapUnit));
-    store.register_late_pass(|_| Box::new(inherent_impl::MultipleInherentImpl));
+    store.register_late_pass(move |_| Box::new(inherent_impl::MultipleInherentImpl::new(conf)));
     store.register_late_pass(|_| Box::new(neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd));
     store.register_late_pass(move |_| Box::new(unwrap::Unwrap::new(conf)));
     store.register_late_pass(move |_| Box::new(indexing_slicing::IndexingSlicing::new(conf)));
@@ -766,7 +763,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(conf)));
     store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
     store.register_late_pass(move |_| Box::new(needless_pass_by_ref_mut::NeedlessPassByRefMut::new(conf)));
-    store.register_late_pass(|_| Box::new(non_canonical_impls::NonCanonicalImpls));
+    store.register_late_pass(|tcx| Box::new(non_canonical_impls::NonCanonicalImpls::new(tcx)));
     store.register_late_pass(move |_| Box::new(single_call_fn::SingleCallFn::new(conf)));
     store.register_early_pass(move || Box::new(raw_strings::RawStrings::new(conf)));
     store.register_late_pass(move |_| Box::new(legacy_numeric_constants::LegacyNumericConstants::new(conf)));
@@ -835,5 +832,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
     store.register_late_pass(|_| Box::new(volatile_composites::VolatileComposites));
     store.register_late_pass(|_| Box::new(replace_box::ReplaceBox));
+    store.register_late_pass(|_| Box::new(mutable_borrow_of_copy::MutableBorrowOfCopy::new(conf)));
+    store.register_late_pass(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
