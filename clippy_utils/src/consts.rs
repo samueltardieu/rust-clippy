@@ -235,9 +235,7 @@ impl Constant<'_> {
                 _ => None,
             },
             (Self::Vec(l), Self::Vec(r)) => {
-                let (ty::Array(cmp_type, _) | ty::Slice(cmp_type)) = *cmp_type.kind() else {
-                    return None;
-                };
+                let cmp_type = cmp_type.builtin_index()?;
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
                     .find(|r| r.is_none_or(|o| o != Ordering::Equal))
@@ -487,7 +485,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
             ExprKind::Block(block, _) => self.block(block),
             ExprKind::Lit(lit) => {
-                if is_direct_expn_of(e.span, "cfg").is_some() {
+                if is_direct_expn_of(e.span, sym::cfg).is_some() {
                     None
                 } else {
                     Some(lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)))
@@ -565,7 +563,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 })
             },
             ExprKind::Lit(lit) => {
-                if is_direct_expn_of(e.span, "cfg").is_some() {
+                if is_direct_expn_of(e.span, sym::cfg).is_some() {
                     None
                 } else {
                     match &lit.node {
@@ -654,7 +652,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                         span,
                         ..
                     }) = self.tcx.hir_node(body_id.hir_id)
-                    && is_direct_expn_of(*span, "cfg").is_some()
+                    && is_direct_expn_of(*span, sym::cfg).is_some()
                 {
                     return None;
                 }
@@ -959,4 +957,19 @@ fn field_of_struct<'tcx>(
     } else {
         None
     }
+}
+
+/// If `expr` evaluates to an integer constant, return its value.
+pub fn integer_const(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
+    if let Some(Constant::Int(value)) = ConstEvalCtxt::new(cx).eval_simple(expr) {
+        Some(value)
+    } else {
+        None
+    }
+}
+
+/// Check if `expr` evaluates to an integer constant of 0.
+#[inline]
+pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    integer_const(cx, expr) == Some(0)
 }

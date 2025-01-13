@@ -5,6 +5,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-exact-repetitions
            allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
@@ -32,6 +33,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
+           check-mutable-borrow-of-copy-in-tests
            check-private-items
            cognitive-complexity-threshold
            disallowed-macros
@@ -98,6 +100,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-exact-repetitions
            allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
@@ -125,6 +128,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
+           check-mutable-borrow-of-copy-in-tests
            check-private-items
            cognitive-complexity-threshold
            disallowed-macros
@@ -191,6 +195,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-exact-repetitions
            allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
@@ -218,6 +223,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
+           check-mutable-borrow-of-copy-in-tests
            check-private-items
            cognitive-complexity-threshold
            disallowed-macros

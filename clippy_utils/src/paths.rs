@@ -8,9 +8,9 @@ use crate::{MaybePath, path_def_id, sym};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::{MacroNS, TypeNS, ValueNS};
-use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{ImplItemRef, ItemKind, Node, OwnerId, TraitItemRef};
+use rustc_hir::{ImplItemRef, ItemKind, Node, OwnerId, TraitItemRef, UseKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, UintTy};
@@ -129,6 +129,7 @@ path_macros! {
 // Paths in `core`/`alloc`/`std`. This should be avoided and cleaned up by adding diagnostic items.
 pub static ALIGN_OF: PathLookup = value_path!(core::mem::align_of);
 pub static CHAR_TO_DIGIT: PathLookup = value_path!(char::to_digit);
+pub static CONCAT: PathLookup = macro_path!(core::concat);
 pub static IO_ERROR_NEW: PathLookup = value_path!(std::io::Error::new);
 pub static IO_ERRORKIND_OTHER_CTOR: PathLookup = value_path!(std::io::ErrorKind::Other);
 pub static ITER_STEP: PathLookup = type_path!(core::iter::Step);
@@ -302,8 +303,19 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
 
     match item_kind {
         ItemKind::Mod(_, r#mod) => r#mod.item_ids.iter().find_map(|&item_id| {
-            let ident = tcx.hir_item(item_id).kind.ident()?;
-            res(ident, item_id.owner_id)
+            let item = tcx.hir_item(item_id);
+            if let ItemKind::Use(path, UseKind::Single(ident)) = item.kind {
+                if ident.name == name {
+                    path.res
+                        .iter()
+                        .find(|res| ns.matches(res.ns()))
+                        .and_then(Res::opt_def_id)
+                } else {
+                    None
+                }
+            } else {
+                res(item.kind.ident()?, item_id.owner_id)
+            }
         }),
         ItemKind::Impl(r#impl) => r#impl
             .items
