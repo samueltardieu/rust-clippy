@@ -10,7 +10,7 @@ use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{Span, sym};
@@ -135,7 +135,7 @@ fn get_impl_trait_def_id(cx: &LateContext<'_>, method_def_id: LocalDefId) -> Opt
         }),
     )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
-        && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
+        && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
         && let Some(trait_) = impl_.of_trait
     {
@@ -240,7 +240,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
             }),
         )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
-        && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
+        && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
         && let Some(trait_) = impl_.of_trait
         && let Some(trait_def_id) = trait_.trait_def_id()
@@ -337,14 +337,14 @@ impl UnconditionalRecursion {
             for (ty, impl_def_ids) in impls.non_blanket_impls() {
                 let Some(self_def_id) = ty.def() else { continue };
                 for impl_def_id in impl_def_ids {
-                    if !cx.tcx.has_attr(*impl_def_id, sym::automatically_derived) &&
+                    if !cx.tcx.is_automatically_derived(*impl_def_id) &&
                         let Some(assoc_item) = cx
                             .tcx
                             .associated_items(impl_def_id)
                             .in_definition_order()
                             // We're not interested in foreign implementations of the `Default` trait.
                             .find(|item| {
-                                item.kind == AssocKind::Fn && item.def_id.is_local() && item.name == kw::Default
+                                item.is_fn() && item.def_id.is_local() && item.name() == kw::Default
                             })
                         && let Some(body_node) = cx.tcx.hir_get_if_local(assoc_item.def_id)
                         && let Some(body_id) = body_node.body_id()

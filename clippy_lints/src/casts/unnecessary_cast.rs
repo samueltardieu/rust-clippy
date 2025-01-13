@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::{SpanRangeExt, snippet_opt};
+use clippy_utils::ty::expr_type_is_certain;
 use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
@@ -130,20 +131,23 @@ pub(super) fn check<'tcx>(
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
             {
-                if let Some(src) = cast_expr.span.get_source_text(cx) {
-                    if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
-                        lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
-                        return true;
-                    }
+                if let Some(src) = cast_expr.span.get_source_text(cx)
+                    && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
+                {
+                    lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                    return true;
                 }
             },
             _ => {},
         }
     }
 
-    if cast_from.kind() == cast_to.kind() && !expr.span.in_external_macro(cx.sess().source_map()) {
+    if cast_from.kind() == cast_to.kind()
+        && !expr.span.in_external_macro(cx.sess().source_map())
+        && expr_type_is_certain(cx, cast_expr)
+    {
         if let Some(id) = path_to_local(cast_expr)
-            && !cx.tcx.hir().span(id).eq_ctxt(cast_expr.span)
+            && !cx.tcx.hir_span(id).eq_ctxt(cast_expr.span)
         {
             // Binding context is different than the identifiers context.
             // Weird macro wizardry could be involved here.

@@ -120,12 +120,7 @@ impl ConfError {
         Self {
             message: message.into(),
             suggestion,
-            span: Span::new(
-                file.start_pos + BytePos::from_usize(span.start),
-                file.start_pos + BytePos::from_usize(span.end),
-                SyntaxContext::root(),
-                None,
-            ),
+            span: span_from_toml_range(file, span),
         }
     }
 }
@@ -176,11 +171,61 @@ macro_rules! default_text {
     };
 }
 
+macro_rules! deserialize {
+    ($map:expr, $ty:ty, $errors:expr, $file:expr) => {{
+        let raw_value = $map.next_value::<toml::Spanned<toml::Value>>()?;
+        let value_span = raw_value.span();
+        let value = match <$ty>::deserialize(raw_value.into_inner()) {
+            Err(e) => {
+                $errors.push(ConfError::spanned(
+                    $file,
+                    e.to_string().replace('\n', " ").trim(),
+                    None,
+                    value_span,
+                ));
+                continue;
+            },
+            Ok(value) => value,
+        };
+        (value, value_span)
+    }};
+
+    ($map:expr, $ty:ty, $errors:expr, $file:expr, $replacements_allowed:expr) => {{
+        let array = $map.next_value::<Vec<toml::Spanned<toml::Value>>>()?;
+        let mut disallowed_paths_span = Range {
+            start: usize::MAX,
+            end: usize::MIN,
+        };
+        let mut disallowed_paths = Vec::new();
+        for raw_value in array {
+            let value_span = raw_value.span();
+            let mut disallowed_path = match DisallowedPath::<$replacements_allowed>::deserialize(raw_value.into_inner())
+            {
+                Err(e) => {
+                    $errors.push(ConfError::spanned(
+                        $file,
+                        e.to_string().replace('\n', " ").trim(),
+                        None,
+                        value_span,
+                    ));
+                    continue;
+                },
+                Ok(disallowed_path) => disallowed_path,
+            };
+            disallowed_paths_span = union(&disallowed_paths_span, &value_span);
+            disallowed_path.set_span(span_from_toml_range($file, value_span));
+            disallowed_paths.push(disallowed_path);
+        }
+        (disallowed_paths, disallowed_paths_span)
+    }};
+}
+
 macro_rules! define_Conf {
     ($(
         $(#[doc = $doc:literal])+
         $(#[conf_deprecated($dep:literal, $new_conf:ident)])?
         $(#[default_text = $default_text:expr])?
+        $(#[disallowed_paths_allow_replacements = $replacements_allowed:expr])?
         $(#[lints($($for_lints:ident),* $(,)?)])?
         $name:ident: $ty:ty = $default:expr,
     )*) => {
@@ -218,42 +263,46 @@ macro_rules! define_Conf {
                 let mut value_spans = HashMap::new();
                 let mut errors = Vec::new();
                 let mut warnings = Vec::new();
+
+                // Declare a local variable for each field available to a configuration file.
                 $(let mut $name = None;)*
+
                 // could get `Field` here directly, but get `String` first for diagnostics
                 while let Some(name) = map.next_key::<toml::Spanned<String>>()? {
-                    match Field::deserialize(name.get_ref().as_str().into_deserializer()) {
+                    let field = match Field::deserialize(name.get_ref().as_str().into_deserializer()) {
                         Err(e) => {
                             let e: FieldError = e;
                             errors.push(ConfError::spanned(self.0, e.error, e.suggestion, name.span()));
+                            continue;
                         }
-                        $(Ok(Field::$name) => {
+                        Ok(field) => field
+                    };
+
+                    match field {
+                        $(Field::$name => {
+                            // Is this a deprecated field, i.e., is `$dep` set? If so, push a warning.
                             $(warnings.push(ConfError::spanned(self.0, format!("deprecated field `{}`. {}", name.get_ref(), $dep), None, name.span()));)?
-                            let raw_value = map.next_value::<toml::Spanned<toml::Value>>()?;
-                            let value_span = raw_value.span();
-                            match <$ty>::deserialize(raw_value.into_inner()) {
-                                Err(e) => errors.push(ConfError::spanned(self.0, e.to_string().replace('\n', " ").trim(), None, value_span)),
-                                Ok(value) => match $name {
-                                    Some(_) => {
-                                        errors.push(ConfError::spanned(self.0, format!("duplicate field `{}`", name.get_ref()), None, name.span()));
-                                    }
-                                    None => {
-                                        $name = Some(value);
-                                        value_spans.insert(name.get_ref().as_str().to_string(), value_span);
-                                        // $new_conf is the same as one of the defined `$name`s, so
-                                        // this variable is defined in line 2 of this function.
-                                        $(match $new_conf {
-                                            Some(_) => errors.push(ConfError::spanned(self.0, concat!(
-                                                "duplicate field `", stringify!($new_conf),
-                                                "` (provided as `", stringify!($name), "`)"
-                                            ), None, name.span())),
-                                            None => $new_conf = $name.clone(),
-                                        })?
-                                    },
-                                }
+                            let (value, value_span) =
+                                deserialize!(map, $ty, errors, self.0 $(, $replacements_allowed)?);
+                            // Was this field set previously?
+                            if $name.is_some() {
+                                errors.push(ConfError::spanned(self.0, format!("duplicate field `{}`", name.get_ref()), None, name.span()));
+                                continue;
                             }
+                            $name = Some(value);
+                            value_spans.insert(name.get_ref().as_str().to_string(), value_span);
+                            // If this is a deprecated field, was the new field (`$new_conf`) set previously?
+                            // Note that `$new_conf` is one of the defined `$name`s.
+                            $(match $new_conf {
+                                Some(_) => errors.push(ConfError::spanned(self.0, concat!(
+                                    "duplicate field `", stringify!($new_conf),
+                                    "` (provided as `", stringify!($name), "`)"
+                                ), None, name.span())),
+                                None => $new_conf = $name.clone(),
+                            })?
                         })*
                         // ignore contents of the third_party key
-                        Ok(Field::third_party) => drop(map.next_value::<IgnoredAny>())
+                        Field::third_party => drop(map.next_value::<IgnoredAny>())
                     }
                 }
                 let conf = Conf { $($name: $name.unwrap_or_else(defaults::$name),)* };
@@ -273,6 +322,22 @@ macro_rules! define_Conf {
             )*]
         }
     };
+}
+
+fn union(x: &Range<usize>, y: &Range<usize>) -> Range<usize> {
+    Range {
+        start: cmp::min(x.start, y.start),
+        end: cmp::max(x.end, y.end),
+    }
+}
+
+fn span_from_toml_range(file: &SourceFile, span: Range<usize>) -> Span {
+    Span::new(
+        file.start_pos + BytePos::from_usize(span.start),
+        file.start_pos + BytePos::from_usize(span.end),
+        SyntaxContext::root(),
+        None,
+    )
 }
 
 define_Conf! {
@@ -461,6 +526,7 @@ define_Conf! {
     )]
     avoid_breaking_exported_api: bool = true,
     /// The list of types which may not be held across an await point.
+    #[disallowed_paths_allow_replacements = false]
     #[lints(await_holding_invalid_type)]
     await_holding_invalid_types: Vec<DisallowedPathWithoutReplacement> = Vec::new(),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
@@ -471,6 +537,9 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to search for mutable borrows of freshly copied data in tests.
+    #[lints(copy_then_borrow_mut)]
+    check_copy_then_borrow_mut_in_tests: bool = true,
     /// Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
     #[lints(incompatible_msrv)]
     check_incompatible_msrv_in_tests: bool = false,
@@ -506,9 +575,11 @@ define_Conf! {
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
     cyclomatic_complexity_threshold: u64 = 25,
     /// The list of disallowed macros, written as fully qualified paths.
+    #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_macros)]
     disallowed_macros: Vec<DisallowedPath> = Vec::new(),
     /// The list of disallowed methods, written as fully qualified paths.
+    #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_methods)]
     disallowed_methods: Vec<DisallowedPath> = Vec::new(),
     /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
@@ -517,6 +588,7 @@ define_Conf! {
     #[lints(disallowed_names)]
     disallowed_names: Vec<String> = DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect(),
     /// The list of disallowed types, written as fully qualified paths.
+    #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_types)]
     disallowed_types: Vec<DisallowedPath> = Vec::new(),
     /// The list of words this lint should not consider as identifiers needing ticks. The value
@@ -648,6 +720,7 @@ define_Conf! {
         iter_kv_map,
         legacy_numeric_constants,
         lines_filter_map_ok,
+        manual_abs_diff,
         manual_bits,
         manual_c_str_literals,
         manual_clamp,
@@ -655,6 +728,7 @@ define_Conf! {
         manual_flatten,
         manual_hash_one,
         manual_is_ascii_check,
+        manual_is_power_of_two,
         manual_let_else,
         manual_midpoint,
         manual_non_exhaustive,

@@ -62,6 +62,7 @@ impl CognitiveComplexity {
 
         let mut cc = 1u64;
         let mut returns = 0u64;
+        let mut prev_expr: Option<&ExprKind<'tcx>> = None;
         let _: Option<!> = for_each_expr_without_closures(expr, |e| {
             match e.kind {
                 ExprKind::If(_, _, _) => {
@@ -73,9 +74,14 @@ impl CognitiveComplexity {
                     }
                     cc += arms.iter().filter(|arm| arm.guard.is_some()).count() as u64;
                 },
-                ExprKind::Ret(_) => returns += 1,
+                ExprKind::Ret(_) => {
+                    if !matches!(prev_expr, Some(ExprKind::Ret(_))) {
+                        returns += 1;
+                    }
+                },
                 _ => {},
             }
+            prev_expr = Some(&e.kind);
             ControlFlow::Continue(())
         });
 
@@ -97,7 +103,6 @@ impl CognitiveComplexity {
                 FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
                 FnKind::Closure => {
                     let header_span = body_span.with_hi(decl.output.span().lo());
-                    #[expect(clippy::range_plus_one)]
                     if let Some(range) = header_span.map_range(cx, |src, range| {
                         let mut idxs = src.get(range.clone())?.match_indices('|');
                         Some(range.start + idxs.next()?.0..range.start + idxs.next()?.0 + 1)

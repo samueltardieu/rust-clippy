@@ -17,11 +17,12 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
-    GenericArgsRef, GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
+    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -30,7 +31,7 @@ use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
-use std::iter;
+use std::{iter, mem};
 
 use crate::{def_path_def_ids, match_def_path, path_res};
 
@@ -128,10 +129,10 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                             // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
                             // so we check the term for `U`.
                             ty::ClauseKind::Projection(projection_predicate) => {
-                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
-                                    if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
-                                        return true;
-                                    }
+                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack()
+                                    && contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen)
+                                {
+                                    return true;
                                 }
                             },
                             _ => (),
@@ -156,7 +157,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
 pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     cx.tcx
         .get_diagnostic_item(sym::Iterator)
-        .and_then(|iter_did| cx.get_associated_type(ty, iter_did, "Item"))
+        .and_then(|iter_did| cx.get_associated_type(ty, iter_did, sym::Item))
 }
 
 /// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type
@@ -337,20 +338,20 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
-                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
-                    if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
-                        return true;
-                    }
+                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+                    && cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use)
+                {
+                    return true;
                 }
             }
             false
         },
         ty::Dynamic(binder, _, _) => {
             for predicate in *binder {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
-                    if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
-                        return true;
-                    }
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
+                    && cx.tcx.has_attr(trait_ref.def_id, sym::must_use)
+                {
+                    return true;
                 }
             }
             false
@@ -1109,10 +1110,10 @@ pub fn make_projection<'tcx>(
         assoc_ty: Symbol,
         args: GenericArgsRef<'tcx>,
     ) -> Option<AliasTy<'tcx>> {
-        let Some(assoc_item) = tcx.associated_items(container_id).find_by_name_and_kind(
+        let Some(assoc_item) = tcx.associated_items(container_id).find_by_ident_and_kind(
             tcx,
             Ident::with_dummy_span(assoc_ty),
-            AssocKind::Type,
+            AssocTag::Type,
             container_id,
         ) else {
             debug_assert!(false, "type `{assoc_ty}` not found in `{container_id:?}`");
@@ -1345,14 +1346,14 @@ pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_n
                 .associated_items(did)
                 .filter_by_name_unhygienic(method_name)
                 .next()
-                .filter(|item| item.kind == AssocKind::Fn)
+                .filter(|item| item.as_tag() == AssocTag::Fn)
         })
     } else {
         None
     }
 }
 
-/// Get's the type of a field by name.
+/// Gets the type of a field by name.
 pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) -> Option<Ty<'tcx>> {
     match *ty.kind() {
         ty::Adt(def, args) if def.is_union() || def.is_struct() => def
@@ -1375,4 +1376,12 @@ pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
             .then(|| args.type_at(0)),
         _ => None,
     }
+}
+
+/// Checks if the adjustments contain a mutable dereference of a `ManuallyDrop<_>`.
+pub fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
+    adjustments.iter().any(|a| {
+        let ty = mem::replace(&mut ty, a.target);
+        matches!(a.kind, Adjust::Deref(Some(op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
+    })
 }
