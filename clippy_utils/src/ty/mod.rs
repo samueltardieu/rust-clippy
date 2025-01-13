@@ -305,17 +305,31 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Returns whether the type has #[must_use] attribute
-pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+// Returns whether the `ty` has `#[must_use]` attribute. If `simplify_uninhabited` is set and
+// `ty` is a `Result`/`ControlFlow` whose `Err`/`Break` payload is an uninhabited type,
+// the `Ok`/`Continue` payload type will be used instead. See <https://github.com/rust-lang/rust/pull/148214>.
+pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, simplify_uninhabited: bool) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => find_attr!(cx.tcx.get_all_attrs(adt.did()), AttributeKind::MustUse { .. }),
+        ty::Adt(adt, args) => match cx.tcx.get_diagnostic_name(adt.did()) {
+            Some(sym::Result)
+                if simplify_uninhabited && args.type_at(1).is_privately_uninhabited(cx.tcx, cx.typing_env()) =>
+            {
+                is_must_use_ty(cx, args.type_at(0), simplify_uninhabited)
+            },
+            Some(sym::ControlFlow)
+                if simplify_uninhabited && args.type_at(0).is_privately_uninhabited(cx.tcx, cx.typing_env()) =>
+            {
+                is_must_use_ty(cx, args.type_at(1), simplify_uninhabited)
+            },
+            _ => find_attr!(cx.tcx.get_all_attrs(adt.did()), AttributeKind::MustUse { .. }),
+        },
         ty::Foreign(did) => find_attr!(cx.tcx.get_all_attrs(*did), AttributeKind::MustUse { .. }),
         ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, *ty)
+            is_must_use_ty(cx, *ty, simplify_uninhabited)
         },
-        ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
+        ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty, simplify_uninhabited)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
@@ -436,6 +450,21 @@ pub fn peel_and_count_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize, Option<Mutabili
         mutbl.replace(mutbl.map_or(*m, |mutbl: Mutability| mutbl.min(*m)));
     }
     (ty, count, mutbl)
+}
+
+/// Peels off `n` references on the type. Returns the underlying type and, if any references
+/// were removed, whether the pointer is ultimately mutable or not.
+pub fn peel_n_ty_refs(mut ty: Ty<'_>, n: usize) -> (Ty<'_>, Option<Mutability>) {
+    let mut mutbl = None;
+    for _ in 0..n {
+        if let ty::Ref(_, dest_ty, m) = ty.kind() {
+            ty = *dest_ty;
+            mutbl.replace(mutbl.map_or(*m, |mutbl: Mutability| mutbl.min(*m)));
+        } else {
+            break;
+        }
+    }
+    (ty, mutbl)
 }
 
 /// Checks whether `a` and `b` are same types having same `Const` generic args, but ignores
@@ -815,7 +844,7 @@ impl AdtVariantInfo {
                     .enumerate()
                     .map(|(i, f)| (i, approx_ty_size(cx, f.ty(cx.tcx, subst))))
                     .collect::<Vec<_>>();
-                fields_size.sort_by(|(_, a_size), (_, b_size)| a_size.cmp(b_size));
+                fields_size.sort_by_key(|(_, a_size)| *a_size);
 
                 Self {
                     ind: i,
@@ -824,7 +853,7 @@ impl AdtVariantInfo {
                 }
             })
             .collect::<Vec<_>>();
-        variants_size.sort_by(|a, b| b.size.cmp(&a.size));
+        variants_size.sort_by_key(|b| std::cmp::Reverse(b.size));
         variants_size
     }
 }

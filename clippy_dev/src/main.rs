@@ -4,8 +4,8 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, new_parse_cx, release, rename_lint, serve,
-    setup, sync, update_lints,
+    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, lint, new_lint, new_parse_cx, release, serve, setup, sync,
+    update_lints,
 };
 use std::env;
 
@@ -39,6 +39,13 @@ fn main() {
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {
+            SetupSubcommand::Emacs { remove, force_override } => {
+                if remove {
+                    setup::emacs::remove_dir_locals();
+                } else {
+                    setup::emacs::setup_dir_locals(force_override);
+                }
+            },
             SetupSubcommand::Intellij { remove, repo_path } => {
                 if remove {
                     setup::intellij::remove_rustc_src();
@@ -68,27 +75,21 @@ fn main() {
             },
         },
         DevCommand::Remove(RemoveCommand { subcommand }) => match subcommand {
+            RemoveSubcommand::Emacs => setup::emacs::remove_dir_locals(),
             RemoveSubcommand::Intellij => setup::intellij::remove_rustc_src(),
             RemoveSubcommand::GitHook => setup::git_hook::remove_hook(),
             RemoveSubcommand::VscodeTasks => setup::vscode::remove_tasks(),
         },
         DevCommand::Serve { port, lint } => serve::run(port, lint),
         DevCommand::Lint { path, edition, args } => lint::run(&path, &edition, args.iter()),
-        DevCommand::RenameLint {
-            old_name,
-            new_name,
-            uplift,
-        } => new_parse_cx(|cx| {
-            rename_lint::rename(
-                cx,
-                clippy.version,
-                &old_name,
-                new_name.as_ref().unwrap_or(&old_name),
-                uplift,
-            );
+        DevCommand::RenameLint { old_name, new_name } => new_parse_cx(|cx| {
+            edit_lints::rename(cx, clippy.version, &old_name, &new_name);
+        }),
+        DevCommand::Uplift { old_name, new_name } => new_parse_cx(|cx| {
+            edit_lints::uplift(cx, clippy.version, &old_name, new_name.as_deref().unwrap_or(&old_name));
         }),
         DevCommand::Deprecate { name, reason } => {
-            new_parse_cx(|cx| deprecate_lint::deprecate(cx, clippy.version, &name, &reason));
+            new_parse_cx(|cx| edit_lints::deprecate(cx, clippy.version, &name, &reason));
         },
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
@@ -243,15 +244,9 @@ enum DevCommand {
         /// The name of the lint to rename
         #[arg(value_parser = lint_name)]
         old_name: String,
-        #[arg(
-            required_unless_present = "uplift",
-            value_parser = lint_name,
-        )]
+        #[arg(value_parser = lint_name)]
         /// The new name of the lint
-        new_name: Option<String>,
-        #[arg(long)]
-        /// This lint will be uplifted into rustc
-        uplift: bool,
+        new_name: String,
     },
     /// Deprecate the given lint
     Deprecate {
@@ -266,6 +261,15 @@ enum DevCommand {
     Sync(SyncCommand),
     /// Manage Clippy releases
     Release(ReleaseCommand),
+    /// Marks a lint as uplifted into rustc and removes its code
+    Uplift {
+        /// The name of the lint to uplift
+        #[arg(value_parser = lint_name)]
+        old_name: String,
+        /// The name of the lint in rustc
+        #[arg(value_parser = lint_name)]
+        new_name: Option<String>,
+    },
 }
 
 #[derive(Args)]
@@ -276,6 +280,15 @@ struct SetupCommand {
 
 #[derive(Subcommand)]
 enum SetupSubcommand {
+    /// Add a `.dir-locals.el` so that Emacs can use `rustic-mode` and `eglot`
+    Emacs {
+        #[arg(long)]
+        /// Remove the `.dir-locals.el` file created by `cargo dev setup emacs`
+        remove: bool,
+        #[arg(long, short)]
+        /// Forces the override of an existing git pre-commit hook
+        force_override: bool,
+    },
     /// Alter dependencies so Intellij Rust can find rustc internals
     Intellij {
         #[arg(long)]
@@ -336,6 +349,8 @@ struct RemoveCommand {
 
 #[derive(Subcommand)]
 enum RemoveSubcommand {
+    /// Remove the `.dir-locals.el` file created by `cargo dev setup emacs`
+    Emacs,
     /// Remove the dependencies added with 'cargo dev setup intellij'
     Intellij,
     /// Remove the pre-commit git hook
