@@ -4,10 +4,9 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, release, rename_lint, serve, setup, sync,
-    update_lints,
+    ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, new_parse_cx, release, rename_lint, serve,
+    setup, sync, update_lints,
 };
-use std::convert::Infallible;
 use std::env;
 
 fn main() {
@@ -28,7 +27,7 @@ fn main() {
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check } => fmt::run(UpdateMode::from_check(check)),
-        DevCommand::UpdateLints { check } => update_lints::update(UpdateMode::from_check(check)),
+        DevCommand::UpdateLints { check } => new_parse_cx(|cx| update_lints::update(cx, UpdateMode::from_check(check))),
         DevCommand::NewLint {
             pass,
             name,
@@ -36,10 +35,17 @@ fn main() {
             r#type,
             msrv,
         } => match new_lint::create(clippy.version, pass, &name, &category, r#type.as_deref(), msrv) {
-            Ok(()) => update_lints::update(UpdateMode::Change),
+            Ok(()) => new_parse_cx(|cx| update_lints::update(cx, UpdateMode::Change)),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {
+            SetupSubcommand::Emacs { remove, force_override } => {
+                if remove {
+                    setup::emacs::remove_dir_locals();
+                } else {
+                    setup::emacs::setup_dir_locals(force_override);
+                }
+            },
             SetupSubcommand::Intellij { remove, repo_path } => {
                 if remove {
                     setup::intellij::remove_rustc_src();
@@ -69,6 +75,7 @@ fn main() {
             },
         },
         DevCommand::Remove(RemoveCommand { subcommand }) => match subcommand {
+            RemoveSubcommand::Emacs => setup::emacs::remove_dir_locals(),
             RemoveSubcommand::Intellij => setup::intellij::remove_rustc_src(),
             RemoveSubcommand::GitHook => setup::git_hook::remove_hook(),
             RemoveSubcommand::VscodeTasks => setup::vscode::remove_tasks(),
@@ -79,19 +86,38 @@ fn main() {
             old_name,
             new_name,
             uplift,
-        } => rename_lint::rename(
-            clippy.version,
-            &old_name,
-            new_name.as_ref().unwrap_or(&old_name),
-            uplift,
-        ),
-        DevCommand::Deprecate { name, reason } => deprecate_lint::deprecate(clippy.version, &name, &reason),
+        } => new_parse_cx(|cx| {
+            rename_lint::rename(
+                cx,
+                clippy.version,
+                &old_name,
+                new_name.as_ref().unwrap_or(&old_name),
+                uplift,
+            );
+        }),
+        DevCommand::Deprecate { name, reason } => {
+            new_parse_cx(|cx| deprecate_lint::deprecate(cx, clippy.version, &name, &reason));
+        },
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
         },
         DevCommand::Release(ReleaseCommand { subcommand }) => match subcommand {
             ReleaseSubcommand::BumpVersion => release::bump_version(clippy.version),
         },
+    }
+}
+
+fn lint_name(name: &str) -> Result<String, String> {
+    let name = name.replace('-', "_");
+    if let Some((pre, _)) = name.split_once("::") {
+        Err(format!("lint name should not contain the `{pre}` prefix"))
+    } else if name
+        .bytes()
+        .any(|x| !matches!(x, b'_' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z'))
+    {
+        Err("lint name contains invalid characters".to_owned())
+    } else {
+        Ok(name)
     }
 }
 
@@ -150,7 +176,7 @@ enum DevCommand {
         #[arg(
             short,
             long,
-            value_parser = |name: &str| Ok::<_, Infallible>(name.replace('-', "_")),
+            value_parser = lint_name,
         )]
         /// Name of the new lint in snake case, ex: `fn_too_long`
         name: String,
@@ -223,8 +249,12 @@ enum DevCommand {
     /// Rename a lint
     RenameLint {
         /// The name of the lint to rename
+        #[arg(value_parser = lint_name)]
         old_name: String,
-        #[arg(required_unless_present = "uplift")]
+        #[arg(
+            required_unless_present = "uplift",
+            value_parser = lint_name,
+        )]
         /// The new name of the lint
         new_name: Option<String>,
         #[arg(long)]
@@ -234,6 +264,7 @@ enum DevCommand {
     /// Deprecate the given lint
     Deprecate {
         /// The name of the lint to deprecate
+        #[arg(value_parser = lint_name)]
         name: String,
         #[arg(long, short)]
         /// The reason for deprecation
@@ -253,6 +284,15 @@ struct SetupCommand {
 
 #[derive(Subcommand)]
 enum SetupSubcommand {
+    /// Add a `.dir-locals.el` so that Emacs can use `rustic-mode` and `eglot`
+    Emacs {
+        #[arg(long)]
+        /// Remove the `.dir-locals.el` file created by `cargo dev setup emacs`
+        remove: bool,
+        #[arg(long, short)]
+        /// Forces the override of an existing git pre-commit hook
+        force_override: bool,
+    },
     /// Alter dependencies so Intellij Rust can find rustc internals
     Intellij {
         #[arg(long)]
@@ -313,6 +353,8 @@ struct RemoveCommand {
 
 #[derive(Subcommand)]
 enum RemoveSubcommand {
+    /// Remove the `.dir-locals.el` file created by `cargo dev setup emacs`
+    Emacs,
     /// Remove the dependencies added with 'cargo dev setup intellij'
     Intellij,
     /// Remove the pre-commit git hook

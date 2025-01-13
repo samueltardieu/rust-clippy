@@ -4,6 +4,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(never_type)]
@@ -117,7 +118,7 @@ mod drop_forget_ref;
 mod duplicate_mod;
 mod else_if_without_else;
 mod empty_drop;
-mod empty_enum;
+mod empty_enums;
 mod empty_line_after;
 mod empty_with_brackets;
 mod endian_bytes;
@@ -203,7 +204,6 @@ mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
 mod manual_clamp;
-mod manual_div_ceil;
 mod manual_float_methods;
 mod manual_hash_one;
 mod manual_ignore_case_cmp;
@@ -246,6 +246,7 @@ mod multiple_bound_locations;
 mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
+mod mutable_borrow_of_copy;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
@@ -364,6 +365,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -542,7 +544,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(derive::Derive));
     store.register_late_pass(move |_| Box::new(derivable_impls::DerivableImpls::new(conf)));
     store.register_late_pass(|_| Box::new(drop_forget_ref::DropForgetRef));
-    store.register_late_pass(|_| Box::new(empty_enum::EmptyEnum));
+    store.register_late_pass(|_| Box::new(empty_enums::EmptyEnums));
     store.register_late_pass(|_| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
     store.register_late_pass(|_| Box::<regex::Regex>::default());
     store.register_late_pass(move |tcx| Box::new(ifs::CopyAndPaste::new(tcx, conf)));
@@ -807,7 +809,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_early_pass(|| Box::new(cfg_not_test::CfgNotTest));
     store.register_late_pass(|_| Box::new(zombie_processes::ZombieProcesses));
     store.register_late_pass(|_| Box::new(pointers_in_nomem_asm_block::PointersInNomemAsmBlock));
-    store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
     store.register_late_pass(move |_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo::new(conf)));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
     store.register_late_pass(|_| Box::new(literal_string_with_formatting_args::LiteralStringWithFormattingArg));
@@ -829,5 +830,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
     store.register_late_pass(|_| Box::new(volatile_composites::VolatileComposites));
     store.register_late_pass(|_| Box::new(replace_box::ReplaceBox));
+    store.register_late_pass(|_| Box::new(mutable_borrow_of_copy::MutableBorrowOfCopy::new(conf)));
+    store.register_late_pass(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

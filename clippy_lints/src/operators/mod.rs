@@ -11,6 +11,7 @@ mod float_cmp;
 mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
+mod manual_div_ceil;
 mod manual_is_multiple_of;
 mod manual_midpoint;
 mod misrefactored_assign_op;
@@ -463,7 +464,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for statements of the form `(a - b) < f32::EPSILON` or
-    /// `(a - b) < f64::EPSILON`. Notes the missing `.abs()`.
+    /// `(a - b) < f64::EPSILON`. Note the missing `.abs()`.
     ///
     /// ### Why is this bad?
     /// The code without `.abs()` is more likely to have a bug.
@@ -616,7 +617,7 @@ declare_clippy_lint! {
     /// println!("{within_tolerance}"); // true
     /// ```
     ///
-    /// NB! Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
+    /// NOTE: Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
     /// a different use of the term that is not suitable for floating point equality comparison.
     /// Indeed, for the example above using `f64::EPSILON` as the allowed error would return `false`.
     ///
@@ -679,7 +680,7 @@ declare_clippy_lint! {
     /// println!("{within_tolerance}"); // true
     /// ```
     ///
-    /// NB! Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
+    /// NOTE: Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
     /// a different use of the term that is not suitable for floating point equality comparison.
     /// Indeed, for the example above using `f64::EPSILON` as the allowed error would return `false`.
     ///
@@ -860,6 +861,33 @@ declare_clippy_lint! {
     "manual implementation of `.is_multiple_of()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for an expression like `(x + (y - 1)) / y` which is a common manual reimplementation
+    /// of `x.div_ceil(y)`.
+    ///
+    /// ### Why is this bad?
+    /// It's simpler, clearer and more readable.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x: i32 = 7;
+    /// let y: i32 = 4;
+    /// let div = (x + (y - 1)) / y;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #![feature(int_roundings)]
+    /// let x: i32 = 7;
+    /// let y: i32 = 4;
+    /// let div = x.div_ceil(y);
+    /// ```
+    #[clippy::version = "1.83.0"]
+    pub MANUAL_DIV_CEIL,
+    complexity,
+    "manually reimplementing `div_ceil`"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -906,6 +934,7 @@ impl_lint_pass!(Operators => [
     SELF_ASSIGNMENT,
     MANUAL_MIDPOINT,
     MANUAL_IS_MULTIPLE_OF,
+    MANUAL_DIV_CEIL,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Operators {
@@ -944,6 +973,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     rhs,
                     self.modulo_arithmetic_allow_comparison_to_zero,
                 );
+                manual_div_ceil::check(cx, e, op.node, lhs, rhs, self.msrv);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 let bin_op = op.node.into();
