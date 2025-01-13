@@ -730,7 +730,10 @@ struct Fragments<'a> {
 }
 
 impl Fragments<'_> {
-    fn span(self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
+    /// get the span for the markdown range. Note that this function is not cheap, use it with
+    /// caution.
+    #[must_use]
+    fn span(&self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
         source_span_for_markdown_range(cx.tcx, self.doc, &range, self.fragments)
     }
 }
@@ -1068,9 +1071,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     );
                 } else {
                     for (text, range, assoc_code_level) in text_to_check {
-                        if let Some(span) = fragments.span(cx, range) {
-                            markdown::check(cx, valid_idents, &text, span, assoc_code_level, blockquote_level);
-                        }
+                        markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
                     }
                 }
                 text_to_check = Vec::new();
@@ -1159,7 +1160,6 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
     if range.end < range.start {
         return None;

@@ -1,7 +1,8 @@
 use crate::sym;
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
-use rustc_attr_parsing::{RustcVersion, parse_version};
+use rustc_attr_data_structures::RustcVersion;
+use rustc_attr_parsing::parse_version;
 use rustc_lint::LateContext;
 use rustc_session::Session;
 use rustc_span::Symbol;
@@ -23,8 +24,8 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,88,0 { LET_CHAINS }
-    1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT }
-    1,85,0 { UINT_FLOAT_MIDPOINT }
+    1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF }
+    1,85,0 { UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL }
     1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP }
@@ -67,7 +68,7 @@ msrv_aliases! {
     1,33,0 { UNDERSCORE_IMPORTS }
     1,32,0 { CONST_IS_POWER_OF_TWO }
     1,31,0 { OPTION_REPLACE }
-    1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES }
+    1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES, IPADDR_CONSTANTS }
     1,29,0 { ITER_FLATTEN }
     1,28,0 { FROM_BOOL, REPEAT_WITH, SLICE_FROM_REF }
     1,27,0 { ITERATOR_TRY_FOLD }

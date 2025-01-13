@@ -5,7 +5,7 @@
 
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_attr_parsing::{RustcVersion, StableSince};
+use rustc_attr_data_structures::{RustcVersion, StableSince};
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -18,7 +18,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, GenericArgKind, TraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, Instance, TraitRef, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::symbol::sym;
 use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
@@ -349,7 +349,12 @@ fn check_terminator<'tcx>(
         }
         | TerminatorKind::TailCall { func, args, fn_span: _ } => {
             let fn_ty = func.ty(body, cx.tcx);
-            if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
+            if let ty::FnDef(fn_def_id, fn_substs) = *fn_ty.kind() {
+                let fn_def_id = match Instance::try_resolve(cx.tcx, cx.typing_env(), fn_def_id, fn_substs) {
+                    Ok(Some(fn_inst)) => fn_inst.def_id(),
+                    Ok(None) => return Err((span, format!("cannot resolve instance for {func:?}").into())),
+                    Err(_) => return Err((span, format!("error during instance resolution of {func:?}").into())),
+                };
                 if !is_stable_const_fn(cx, fn_def_id, msrv) {
                     return Err((
                         span,
@@ -404,7 +409,7 @@ fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
                     .and_then(|trait_def_id| cx.tcx.lookup_const_stability(trait_def_id))
             })
             .is_none_or(|const_stab| {
-                if let rustc_attr_parsing::StabilityLevel::Stable { since, .. } = const_stab.level {
+                if let rustc_attr_data_structures::StabilityLevel::Stable { since, .. } = const_stab.level {
                     // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                     // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
                     // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.

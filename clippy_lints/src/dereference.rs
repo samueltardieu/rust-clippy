@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{implements_trait, is_manually_drop};
+use clippy_utils::ty::{adjust_derefs_manually_drop, implements_trait, is_manually_drop};
 use clippy_utils::{
     DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local,
     peel_middle_ty_refs,
 };
-use core::mem;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -22,6 +21,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
+use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -252,13 +252,14 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         }
 
         let typeck = cx.typeck_results();
-        let Some((kind, sub_expr)) = try_parse_ref_op(cx.tcx, typeck, expr) else {
+        let Some((kind, sub_expr, skip_expr)) = try_parse_ref_op(cx.tcx, typeck, expr) else {
             // The whole chain of reference operations has been seen
             if let Some((state, data)) = self.state.take() {
                 report(cx, expr, state, data, typeck);
             }
             return;
         };
+        self.skip_expr = skip_expr;
 
         match (self.state.take(), kind) {
             (None, kind) => {
@@ -671,50 +672,38 @@ fn try_parse_ref_op<'tcx>(
     tcx: TyCtxt<'tcx>,
     typeck: &'tcx TypeckResults<'_>,
     expr: &'tcx Expr<'_>,
-) -> Option<(RefOp, &'tcx Expr<'tcx>)> {
-    let (is_ufcs, def_id, arg) = match expr.kind {
-        ExprKind::MethodCall(_, arg, [], _) => (false, typeck.type_dependent_def_id(expr.hir_id)?, arg),
+) -> Option<(RefOp, &'tcx Expr<'tcx>, Option<HirId>)> {
+    let (call_path_id, def_id, arg) = match expr.kind {
+        ExprKind::MethodCall(_, arg, [], _) => (None, typeck.type_dependent_def_id(expr.hir_id)?, arg),
         ExprKind::Call(
-            Expr {
-                kind: ExprKind::Path(path),
+            &Expr {
+                kind: ExprKind::Path(QPath::Resolved(None, path)),
                 hir_id,
                 ..
             },
             [arg],
-        ) => (true, typeck.qpath_res(path, *hir_id).opt_def_id()?, arg),
+        ) => (Some(hir_id), path.res.opt_def_id()?, arg),
         ExprKind::Unary(UnOp::Deref, sub_expr) if !typeck.expr_ty(sub_expr).is_raw_ptr() => {
-            return Some((RefOp::Deref, sub_expr));
+            return Some((RefOp::Deref, sub_expr, None));
         },
-        ExprKind::AddrOf(BorrowKind::Ref, mutability, sub_expr) => return Some((RefOp::AddrOf(mutability), sub_expr)),
+        ExprKind::AddrOf(BorrowKind::Ref, mutability, sub_expr) => {
+            return Some((RefOp::AddrOf(mutability), sub_expr, None));
+        },
         _ => return None,
     };
-    if tcx.is_diagnostic_item(sym::deref_method, def_id) {
-        Some((
-            RefOp::Method {
-                mutbl: Mutability::Not,
-                is_ufcs,
-            },
-            arg,
-        ))
-    } else if tcx.trait_of_item(def_id)? == tcx.lang_items().deref_mut_trait()? {
-        Some((
-            RefOp::Method {
-                mutbl: Mutability::Mut,
-                is_ufcs,
-            },
-            arg,
-        ))
-    } else {
-        None
-    }
-}
-
-// Checks if the adjustments contains a deref of `ManuallyDrop<_>`
-fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
-    adjustments.iter().any(|a| {
-        let ty = mem::replace(&mut ty, a.target);
-        matches!(a.kind, Adjust::Deref(Some(ref op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
-    })
+    let mutbl = match tcx.get_diagnostic_name(def_id) {
+        Some(sym::deref_method) => Mutability::Not,
+        Some(sym::deref_mut_method) => Mutability::Mut,
+        _ => return None,
+    };
+    Some((
+        RefOp::Method {
+            mutbl,
+            is_ufcs: call_path_id.is_some(),
+        },
+        arg,
+        call_path_id,
+    ))
 }
 
 // Checks whether the type for a deref call actually changed the type, not just the mutability of
@@ -944,7 +933,7 @@ fn report<'tcx>(
             mutbl,
         } => {
             let mut app = Applicability::MachineApplicable;
-            let (expr_str, _expr_is_macro_call) =
+            let (expr_str, expr_is_macro_call) =
                 snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
             let ty = typeck.expr_ty(expr);
             let (_, ref_count) = peel_middle_ty_refs(ty);
@@ -968,20 +957,11 @@ fn report<'tcx>(
                 "&"
             };
 
-            // expr_str (the suggestion) is never shown if is_final_ufcs is true, since it's
-            // `expr.kind == ExprKind::Call`. Therefore, this is, afaik, always unnecessary.
-            /*
-            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence() < ExprPrecedence::Prefix {
+            let expr_str = if !expr_is_macro_call && is_ufcs && expr.precedence() < ExprPrecedence::Prefix {
                 Cow::Owned(format!("({expr_str})"))
             } else {
                 expr_str
             };
-            */
-
-            // Fix #10850, do not lint if it's `Foo::deref` instead of `foo.deref()`.
-            if is_ufcs {
-                return;
-            }
 
             span_lint_and_sugg(
                 cx,
