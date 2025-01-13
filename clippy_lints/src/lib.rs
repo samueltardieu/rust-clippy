@@ -1,9 +1,11 @@
 #![feature(array_windows)]
 #![feature(box_patterns)]
+#![feature(cow_is_borrowed)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(ip_as_octets)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(never_type)]
@@ -35,7 +37,6 @@ extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr_data_structures;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -254,6 +255,7 @@ mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
 mod mut_reference;
+mod mutable_borrow_of_copy;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
@@ -370,6 +372,7 @@ mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
 mod uninit_vec;
+mod unit_as_impl_trait;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnecessary_box_returns;
@@ -601,7 +604,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(move |_| Box::new(trait_bounds::TraitBounds::new(conf)));
     store.register_late_pass(|_| Box::new(comparison_chain::ComparisonChain));
     store.register_late_pass(move |tcx| Box::new(mut_key::MutableKeyType::new(tcx, conf)));
-    store.register_early_pass(|| Box::new(reference::DerefAddrOf));
+    store.register_late_pass(|_| Box::new(reference::DerefAddrOf));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
     let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| Box::new(format_impl::FormatImpl::new(format_args.clone())));
@@ -655,7 +658,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_early_pass(move || Box::new(nonstandard_macro_braces::MacroBraces::new(conf)));
     store.register_late_pass(|_| Box::<macro_use::MacroUseImports>::default());
     store.register_late_pass(|_| Box::new(pattern_type_mismatch::PatternTypeMismatch));
-    store.register_late_pass(|_| Box::new(unwrap_in_result::UnwrapInResult));
+    store.register_late_pass(|_| Box::<unwrap_in_result::UnwrapInResult>::default());
     store.register_late_pass(|_| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|_| Box::new(async_yields_async::AsyncYieldsAsync));
     let attrs = attr_storage.clone();
@@ -830,5 +833,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf)));
     store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
     store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
+    store.register_late_pass(|_| Box::new(mutable_borrow_of_copy::MutableBorrowOfCopy::new(conf)));
+    store.register_late_pass(|_| Box::new(unit_as_impl_trait::UnitAsImplTrait));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

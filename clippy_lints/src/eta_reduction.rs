@@ -7,9 +7,9 @@ use clippy_utils::{
     get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
 };
 use rustc_abi::ExternAbi;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
@@ -231,9 +231,13 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                                     _ => (),
                                 }
                             }
+                            let replace_with = match callee_ty_adjusted.kind() {
+                                ty::FnDef(def, _) => cx.tcx.def_descr(*def),
+                                _ => "function",
+                            };
                             diag.span_suggestion(
                                 expr.span,
-                                "replace the closure with the function itself",
+                                format!("replace the closure with the {replace_with} itself"),
                                 snippet,
                                 Applicability::MachineApplicable,
                             );

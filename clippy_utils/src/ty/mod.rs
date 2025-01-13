@@ -6,18 +6,19 @@ use core::ops::ControlFlow;
 use itertools::Itertools;
 use rustc_abi::VariantIdx;
 use rustc_ast::ast::Mutability;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, FnDecl, LangItem, TyKind};
+use rustc_hir::{Expr, FnDecl, LangItem, TyKind, find_attr};
 use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
@@ -31,7 +32,7 @@ use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
-use std::iter;
+use std::{iter, mem};
 
 use crate::path_res;
 use crate::paths::{PathNS, lookup_path_str};
@@ -1382,7 +1383,6 @@ pub fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         || matches!(ty.kind(), ty::Adt(adt_def, _) if cx.tcx.is_diagnostic_item(sym::Vec, adt_def.did()))
 }
 
-/// Gets the index of a field by name.
 pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {
     match *ty.kind() {
         ty::Adt(def, _) if def.is_union() || def.is_struct() => {
@@ -1391,4 +1391,12 @@ pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {
         ty::Tuple(_) => name.as_str().parse::<usize>().ok(),
         _ => None,
     }
+}
+
+/// Checks if the adjustments contain a mutable dereference of a `ManuallyDrop<_>`.
+pub fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
+    adjustments.iter().any(|a| {
+        let ty = mem::replace(&mut ty, a.target);
+        matches!(a.kind, Adjust::Deref(Some(op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
+    })
 }

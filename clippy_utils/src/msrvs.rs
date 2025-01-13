@@ -1,8 +1,8 @@
 use crate::sym;
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
-use rustc_attr_data_structures::RustcVersion;
 use rustc_attr_parsing::parse_version;
+use rustc_hir::RustcVersion;
 use rustc_lint::LateContext;
 use rustc_session::Session;
 use rustc_span::Symbol;
@@ -69,7 +69,7 @@ msrv_aliases! {
     1,33,0 { UNDERSCORE_IMPORTS }
     1,32,0 { CONST_IS_POWER_OF_TWO }
     1,31,0 { OPTION_REPLACE }
-    1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES }
+    1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES, IPADDR_CONSTANTS }
     1,29,0 { ITER_FLATTEN }
     1,28,0 { FROM_BOOL, REPEAT_WITH, SLICE_FROM_REF }
     1,27,0 { ITERATOR_TRY_FOLD }
