@@ -64,12 +64,12 @@ pub(super) fn check(
         let suggestions = match (constructor, method, ty) {
             ("None", "unwrap", _) => Some(vec![(expr.span, "panic!()".to_string())]),
             ("None", "expect", _) => Some(vec![
-                (expr.span.with_hi(args[0].span.lo()), "panic!(".to_string()),
+                (expr.span.until(args[0].span), "panic!(".to_string()),
                 (expr.span.with_lo(args[0].span.hi()), ")".to_string()),
             ]),
             ("Some" | "Ok", "unwrap_unchecked", _) | ("Err", "unwrap_err_unchecked", _) => {
                 let mut suggs = vec![
-                    (recv.span.with_hi(call_args[0].span.lo()), String::new()),
+                    (recv.span.until(call_args[0].span), String::new()),
                     (expr.span.with_lo(call_args[0].span.hi()), String::new()),
                 ];
                 // try to also remove the unsafe block if present
@@ -93,15 +93,12 @@ pub(super) fn check(
                 Some(vec![(expr.span, format!("{default_ty_string}::default()"))])
             },
             ("None", "unwrap_or", _) => Some(vec![
-                (expr.span.with_hi(args[0].span.lo()), String::new()),
+                (expr.span.until(args[0].span), String::new()),
                 (expr.span.with_lo(args[0].span.hi()), String::new()),
             ]),
             ("None", "unwrap_or_else", _) => match args[0].kind {
                 hir::ExprKind::Closure(hir::Closure { body, .. }) => Some(vec![
-                    (
-                        expr.span.with_hi(cx.tcx.hir().body(*body).value.span.lo()),
-                        String::new(),
-                    ),
+                    (expr.span.until(cx.tcx.hir().body(*body).value.span), String::new()),
                     (expr.span.with_lo(args[0].span.hi()), String::new()),
                 ]),
                 _ => None,
@@ -109,21 +106,15 @@ pub(super) fn check(
             _ if call_args.is_empty() => None,
             (_, _, Some(_)) => None,
             ("Ok", "unwrap_err", None) | ("Err", "unwrap", None) => Some(vec![
-                (
-                    recv.span.with_hi(call_args[0].span.lo()),
-                    "panic!(\"{:?}\", ".to_string(),
-                ),
+                (recv.span.until(call_args[0].span), "panic!(\"{:?}\", ".to_string()),
                 (expr.span.with_lo(call_args[0].span.hi()), ")".to_string()),
             ]),
             ("Ok", "expect_err", None) | ("Err", "expect", None) => Some(vec![
-                (
-                    recv.span.with_hi(call_args[0].span.lo()),
-                    "panic!(\"{1}: {:?}\", ".to_string(),
-                ),
+                (recv.span.until(call_args[0].span), "panic!(\"{1}: {:?}\", ".to_string()),
                 (call_args[0].span.with_lo(args[0].span.lo()), ", ".to_string()),
             ]),
             (_, _, None) => Some(vec![
-                (recv.span.with_hi(call_args[0].span.lo()), String::new()),
+                (recv.span.until(call_args[0].span), String::new()),
                 (expr.span.with_lo(call_args[0].span.hi()), String::new()),
             ]),
         };
