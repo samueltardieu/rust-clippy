@@ -20,6 +20,8 @@ pub static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::LINT_WITHOUT_LINT_PASS_INFO,
     #[cfg(feature = "internal")]
+    crate::utils::internal_lints::manual_span_operation::MANUAL_SPAN_OPERATION_INFO,
+    #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL_INFO,
