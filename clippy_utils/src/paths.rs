@@ -20,6 +20,7 @@ pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
+pub const SPAN: [&str; 3] = ["rustc_span", "span_encoding", "Span"];
 pub const SYMBOL: [&str; 3] = ["rustc_span", "symbol", "Symbol"];
 pub const SYMBOL_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Symbol", "as_str"];
 pub const SYMBOL_TO_IDENT_STRING: [&str; 4] = ["rustc_span", "symbol", "Symbol", "to_ident_string"];
