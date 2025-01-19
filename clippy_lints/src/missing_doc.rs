@@ -164,7 +164,7 @@ impl MissingDoc {
         } else {
             prev_span.hi()
         };
-        let search_span = cur_span.with_lo(start_pos).with_hi(cur_span.lo());
+        let search_span = cur_span.with_lo(start_pos).until(cur_span);
         Some(search_span)
     }
 }
