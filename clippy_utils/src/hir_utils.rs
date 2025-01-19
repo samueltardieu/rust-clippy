@@ -2,22 +2,23 @@ use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
 use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
 use crate::tokenize_with_text;
+use crate::visitors::{Visitable, for_each_expr_without_closures};
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
-    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName,
-    Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
-    TyKind,
+    AssocItemConstraint, BinOpKind, BindingMode, Block, BlockCheckMode, BodyId, Closure, ConstArg, ConstArgKind, Expr,
+    ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
+    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
+    TraitBoundModifiers, Ty, TyKind,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
 use std::hash::{Hash, Hasher};
-use std::ops::Range;
+use std::ops::{ControlFlow, Range};
 use std::slice;
 
 /// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
@@ -1340,4 +1341,45 @@ fn eq_span_tokens(
         }
     }
     f(cx, left.into_range(), right.into_range(), pred)
+}
+
+pub fn may_contain_side_effects<'tcx>(node: impl Visitable<'tcx>) -> bool {
+    for_each_expr_without_closures(node, |e| match e.kind {
+        ExprKind::Call(..)
+        | ExprKind::MethodCall(..)
+        | ExprKind::Assign(..)
+        | ExprKind::AssignOp(..)
+        | ExprKind::Break(..)
+        | ExprKind::Continue(..)
+        | ExprKind::Ret(..)
+        | ExprKind::Become(..)
+        | ExprKind::InlineAsm(..)
+        | ExprKind::Yield(..)
+        | ExprKind::Err(..) => ControlFlow::Break(()),
+        ExprKind::Block(block, _) if matches!(block.rules, BlockCheckMode::UnsafeBlock(..)) => ControlFlow::Break(()),
+        ExprKind::Block(..)
+        | ExprKind::ConstBlock(..)
+        | ExprKind::Lit(..)
+        | ExprKind::Path(..)
+        | ExprKind::Closure(..)
+        | ExprKind::Array(..)
+        | ExprKind::Tup(..)
+        | ExprKind::Binary(..)
+        | ExprKind::Unary(..)
+        | ExprKind::Cast(..)
+        | ExprKind::Type(..)
+        | ExprKind::DropTemps(..)
+        | ExprKind::Let(..)
+        | ExprKind::If(..)
+        | ExprKind::Loop(..)
+        | ExprKind::Match(..)
+        | ExprKind::Field(..)
+        | ExprKind::Index(..)
+        | ExprKind::AddrOf(..)
+        | ExprKind::OffsetOf(..)
+        | ExprKind::Struct(..)
+        | ExprKind::Repeat(..)
+        | ExprKind::UnsafeBinderCast(..) => ControlFlow::Continue(()),
+    })
+    .is_some()
 }
