@@ -499,7 +499,7 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
             span_lint_and_sugg(
                 cx,
                 TRIM_SPLIT_WHITESPACE,
-                trim_span.with_hi(split_ws_span.lo()),
+                trim_span.until(split_ws_span),
                 format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
                 format!("remove `{trim_fn_name}()`"),
                 String::new(),
