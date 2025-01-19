@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
         {
             let attrs = cx.tcx.hir_attrs(item.hir_id());
             let mut app = Applicability::MaybeIncorrect;
-            let fn_snippet = snippet_with_applicability(cx, fn_sig.span.with_hi(ident.span.lo()), "..", &mut app);
+            let fn_snippet = snippet_with_applicability(cx, fn_sig.span.until(ident.span), "..", &mut app);
             for attr in attrs {
                 if let Some(ident) = attr.ident()
                     && ident.name == rustc_span::sym::no_mangle
