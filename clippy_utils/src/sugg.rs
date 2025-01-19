@@ -667,7 +667,7 @@ impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_, ()> {
         applicability: Applicability,
     ) {
         if let Some(indent) = indentation(cx, item) {
-            let span = item.with_hi(item.lo());
+            let span = item.shrink_to_lo();
 
             self.span_suggestion(span, msg.to_string(), format!("{attr}\n{indent}"), applicability);
         }
@@ -675,7 +675,7 @@ impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_, ()> {
 
     fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str, applicability: Applicability) {
         if let Some(indent) = indentation(cx, item) {
-            let span = item.with_hi(item.lo());
+            let span = item.shrink_to_lo();
 
             let mut first = true;
             let new_item = new_item
