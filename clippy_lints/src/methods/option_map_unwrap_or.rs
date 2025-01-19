@@ -117,7 +117,7 @@ pub(super) fn check<'tcx>(
             ];
 
             if !unwrap_snippet_none && !suggest_is_some_and {
-                suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
+                suggestion.push((map_arg_span.until(map_arg_span), format!("{unwrap_snippet}, ")));
             }
 
             diag.multipart_suggestion(format!("use `{suggest}` instead"), suggestion, applicability);
