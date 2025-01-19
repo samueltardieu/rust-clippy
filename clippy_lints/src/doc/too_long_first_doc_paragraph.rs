@@ -74,7 +74,7 @@ pub(super) fn check(
     span_lint_and_then(
         cx,
         TOO_LONG_FIRST_DOC_PARAGRAPH,
-        first_span.with_hi(last_span.lo()),
+        first_span.until(last_span),
         "first doc comment paragraph is too long",
         |diag| {
             if should_suggest_empty_doc
