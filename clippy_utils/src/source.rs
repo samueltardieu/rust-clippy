@@ -462,17 +462,12 @@ pub fn is_present_in_source(sess: &impl HasSession, span: Span) -> bool {
 ///               ^
 /// ```
 pub fn position_before_rarrow(s: &str) -> Option<usize> {
-    s.rfind("->").map(|rpos| {
-        let mut rpos = rpos;
-        let chars: Vec<char> = s.chars().collect();
-        while rpos > 1 {
-            if let Some(c) = chars.get(rpos - 1)
-                && c.is_whitespace()
-            {
-                rpos -= 1;
-                continue;
+    s.rfind("->").map(|mut rpos| {
+        for (i, c) in s[..rpos].char_indices().rev() {
+            if !c.is_whitespace() {
+                break;
             }
-            break;
+            rpos = i;
         }
         rpos
     })
