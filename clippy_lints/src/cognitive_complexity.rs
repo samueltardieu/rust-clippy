@@ -96,7 +96,7 @@ impl CognitiveComplexity {
             let fn_span = match kind {
                 FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
                 FnKind::Closure => {
-                    let header_span = body_span.with_hi(decl.output.span().lo());
+                    let header_span = body_span.until(decl.output.span());
                     #[expect(clippy::range_plus_one)]
                     if let Some(range) = header_span.map_range(cx, |src, range| {
                         let mut idxs = src.get(range.clone())?.match_indices('|');
