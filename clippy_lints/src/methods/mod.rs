@@ -113,6 +113,7 @@ mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
+mod swap_with_temporary;
 mod type_id_on_box;
 mod uninit_assumed_init;
 mod unit_hash;
@@ -4433,6 +4434,34 @@ declare_clippy_lint! {
     "using `Option::and_then` or `Result::and_then` to chain a computation that returns an `Option` or a `Result`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `std::mem::swap` with temporary values.
+    ///
+    /// ### Why is this bad?
+    /// Storing a new value in place of a temporary value which will
+    /// be dropped right after the `swap` is inefficient. The same
+    /// result can be achieved by using an assignment, or dropping
+    /// the swap arguments.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     std::mem::swap(s, &mut String::from("replaced"));
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     *s = String::from("replaced");
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub SWAP_WITH_TEMPORARY,
+    perf,
+    "detect swap with a temporary value"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4603,6 +4632,7 @@ impl_lint_pass!(Methods => [
     MANUAL_REPEAT_N,
     SLICED_STRING_AS_BYTES,
     RETURN_AND_THEN,
+    SWAP_WITH_TEMPORARY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4632,6 +4662,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, &self.msrv);
+                swap_with_temporary::check(cx, expr, func, args);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
