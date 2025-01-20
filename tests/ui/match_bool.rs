@@ -69,6 +69,13 @@ fn match_bool() {
         true => 0,
         false => 1,
     };
+
+    // Lint but don't suggest `if test { 10 } else { 1 }` because of the guard
+    let _ = match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
+        true if option == 5 => 10,
+        _ => 1,
+    };
 }
 
 fn main() {}
