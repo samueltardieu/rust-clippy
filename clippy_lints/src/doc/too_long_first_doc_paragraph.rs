@@ -18,7 +18,8 @@ pub(super) fn check(
     if !check_private_items && !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
         return;
     }
-    if first_paragraph_len <= 200
+    if is_from_proc_macro(cx, item)
+        || first_paragraph_len <= 200
         || !matches!(
             item.kind,
             // This is the list of items which can be documented AND are displayed on the module
@@ -45,12 +46,11 @@ pub(super) fn check(
     for attr in attrs {
         if let Some(doc) = attr.doc_str() {
             spans.push(attr.span);
-            let doc = doc.as_str();
-            let doc = doc.trim();
+            let doc = doc.as_str().trim();
             if spans.len() == 1 {
                 // We make this suggestion only if the first doc line ends with a punctuation
                 // because it might just need to add an empty line with `///`.
-                should_suggest_empty_doc = doc.ends_with('.') || doc.ends_with('!') || doc.ends_with('?');
+                should_suggest_empty_doc = doc.ends_with(['.', '!', '?']);
             }
             let len = doc.chars().count();
             if len >= first_paragraph_len {
@@ -60,35 +60,26 @@ pub(super) fn check(
         }
     }
 
-    let &[first_span, .., last_span] = spans.as_slice() else {
+    let &[first_span, .., last_span] = &spans[..] else {
         return;
     };
-    if is_from_proc_macro(cx, item) {
-        return;
-    }
 
     span_lint_and_then(
         cx,
         TOO_LONG_FIRST_DOC_PARAGRAPH,
-        first_span.with_hi(last_span.lo()),
+        first_span.until(last_span),
         "first doc comment paragraph is too long",
         |diag| {
             if should_suggest_empty_doc
-                && let Some(second_span) = spans.get(1)
-                && let new_span = first_span.with_hi(second_span.lo()).with_lo(first_span.hi())
-                && let Some(snippet) = snippet_opt(cx, new_span)
+                && let inter_span = first_span.between(spans[1])
+                && let Some(new_line) = snippet_opt(cx, inter_span)
+                && let Some(first_snippet) = snippet_opt(cx, first_span)
+                && let Some(comment_prefix) = first_snippet.get(..3)
             {
-                let Some(first) = snippet_opt(cx, first_span) else {
-                    return;
-                };
-                let Some(comment_form) = first.get(..3) else {
-                    return;
-                };
-
                 diag.span_suggestion(
-                    new_span,
+                    inter_span,
                     "add an empty line",
-                    format!("{snippet}{comment_form}{snippet}"),
+                    format!("{new_line}{comment_prefix}{new_line}"),
                     Applicability::MachineApplicable,
                 );
             }
