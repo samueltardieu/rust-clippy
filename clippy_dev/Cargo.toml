@@ -3,6 +3,7 @@ name = "clippy-dev"
 description = "Clippy developer tooling"
 version = "0.0.1"
 edition = "2024"
+publish = false
 
 [dependencies]
 annotate-snippets = { version = "0.12.10", features = ["simd"] }
