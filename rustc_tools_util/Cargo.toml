@@ -7,6 +7,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["rustc", "tool", "git", "version", "hash"]
 categories = ["development-tools"]
-edition = "2024"
+edition = "2021"
+rustc-version = "0.86"
 
 [dependencies]
