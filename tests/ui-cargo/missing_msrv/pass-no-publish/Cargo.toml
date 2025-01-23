@@ -1,0 +1,10 @@
+[package]
+name = "missing_msrv"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+clippy-utilities = "0.2.0"
+
+[workspace]
