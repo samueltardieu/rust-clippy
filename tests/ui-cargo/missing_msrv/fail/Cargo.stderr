@@ -1,0 +1,6 @@
+error: missing `rust-version` field
+  |
+  = note: `-D clippy::missing-msrv` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::missing_msrv)]`
+
+error: could not compile `missing_msrv` (bin "missing_msrv") due to 1 previous error

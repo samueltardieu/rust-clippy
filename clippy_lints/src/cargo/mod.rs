@@ -1,6 +1,7 @@
 mod common_metadata;
 mod feature_name;
 mod lint_groups_priority;
+mod missing_msrv;
 mod multiple_crate_versions;
 mod wildcard_dependencies;
 
@@ -91,6 +92,43 @@ declare_clippy_lint! {
     pub LINT_GROUPS_PRIORITY,
     correctness,
     "a lint group in `Cargo.toml` at the same priority as a lint"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for a missing `rust-version` in `Cargo.toml` when edition is 2024 or later and
+    /// the crate has dependencies.
+    ///
+    /// ### Why is this bad?
+    /// When the edition is set to Rust 2024 or later, Cargo uses a MSRV aware resolver. Not
+    /// setting the MSRV limits the capacity of the resolver to not drag in versions of dependent
+    /// crates incompatible with the version of Rust the developers are using.
+    ///
+    /// ### Example
+    /// ```toml
+    /// [package]
+    /// name = "example"
+    /// edition = "2024"
+    ///
+    /// [dependencies]
+    /// pathfinding = "4.13.1"
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// ```toml
+    /// [package]
+    /// name = "example"
+    /// edition = "2024"
+    /// rust-version = "1.86"
+    ///
+    /// [dependencies]
+    /// pathfinding = "4.13.1"
+    /// ```
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MISSING_MSRV,
+    cargo,
+    "missing MSRV in `Cargo.toml`"
 }
 
 declare_clippy_lint! {
@@ -216,6 +254,7 @@ declare_clippy_lint! {
 impl_lint_pass!(Cargo => [
     CARGO_COMMON_METADATA,
     LINT_GROUPS_PRIORITY,
+    MISSING_MSRV,
     MULTIPLE_CRATE_VERSIONS,
     NEGATIVE_FEATURE_NAMES,
     REDUNDANT_FEATURE_NAMES,
@@ -243,6 +282,7 @@ impl LateLintPass<'_> for Cargo {
             REDUNDANT_FEATURE_NAMES,
             NEGATIVE_FEATURE_NAMES,
             WILDCARD_DEPENDENCIES,
+            MISSING_MSRV,
         ];
         static WITH_DEPS_LINTS: &[&Lint] = &[MULTIPLE_CRATE_VERSIONS];
 
@@ -257,6 +297,7 @@ impl LateLintPass<'_> for Cargo {
                     common_metadata::check(cx, &metadata, self.ignore_publish);
                     feature_name::check(cx, &metadata);
                     wildcard_dependencies::check(cx, &metadata);
+                    missing_msrv::check(cx, &metadata);
                 },
                 Err(e) => {
                     for lint in NO_DEPS_LINTS {

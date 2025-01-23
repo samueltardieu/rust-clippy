@@ -8,6 +8,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "utils"]
 categories = ["development-tools"]
+rustc-version = "1.86"
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }

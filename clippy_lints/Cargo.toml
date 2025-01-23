@@ -7,6 +7,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
 edition = "2024"
+publish = false
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
