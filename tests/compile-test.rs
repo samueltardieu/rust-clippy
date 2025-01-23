@@ -398,8 +398,21 @@ fn main() {
 fn ui_cargo_toml_metadata() {
     let ui_cargo_path = Path::new("tests/ui-cargo");
     let cargo_common_metadata_path = ui_cargo_path.join("cargo_common_metadata");
-    let publish_exceptions =
-        ["fail_publish", "fail_publish_true", "pass_publish_empty"].map(|path| cargo_common_metadata_path.join(path));
+    let missing_msrv_path = ui_cargo_path.join("missing_msrv");
+    let publish_exceptions = [
+        "fail_publish",
+        "fail_publish_true",
+        "pass_publish_empty",
+        "fail_publish_empty",
+    ]
+    .iter()
+    .map(|path| cargo_common_metadata_path.join(path))
+    .chain(
+        ["fail", "pass-edition", "pass-msrv-ok", "pass-no-deps"]
+            .iter()
+            .map(|path| missing_msrv_path.join(path)),
+    )
+    .collect::<Vec<_>>();
 
     for entry in walkdir::WalkDir::new(ui_cargo_path) {
         let entry = entry.unwrap();
