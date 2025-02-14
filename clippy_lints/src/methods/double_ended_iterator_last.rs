@@ -49,7 +49,20 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
             expr.span,
             "called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator",
             |diag| {
-                diag.multipart_suggestion("try", sugg, Applicability::MachineApplicable);
+                let expr_ty = cx.typeck_results().expr_ty(expr);
+                let droppable_elements = expr_ty.has_significant_drop(cx.tcx, cx.typing_env());
+                diag.multipart_suggestion(
+                    "try",
+                    sugg,
+                    if droppable_elements {
+                        Applicability::MaybeIncorrect
+                    } else {
+                        Applicability::MachineApplicable
+                    },
+                );
+                if droppable_elements {
+                    diag.note("this might cause unretrieved elements to be dropped after the retrieved one");
+                }
             },
         );
     }
