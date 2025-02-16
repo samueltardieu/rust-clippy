@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{HasSession, snippet, snippet_block, snippet_block_with_applicability};
 use clippy_utils::span_contains_comment;
@@ -5,7 +6,7 @@ use clippy_utils::sugg::Sugg;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -76,9 +77,23 @@ declare_clippy_lint! {
     "nested `else`-`if` expressions that can be collapsed (e.g., `else { if x { ... } }`)"
 }
 
-declare_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
+pub struct CollapsibleIf {
+    collapse_let_chains: bool,
+}
 
 impl CollapsibleIf {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            collapse_let_chains: conf.collapse_let_chains,
+        }
+    }
+
+    /// Prevent triggering on `if c { if let a = b { .. } }` unless the
+    /// `collapse_let_chains` config option is set.
+    fn is_collapsible(&self, cond: &ast::Expr) -> bool {
+        self.collapse_let_chains || !matches!(cond.kind, ast::ExprKind::Let(..))
+    }
+
     fn check_collapsible_else_if(cx: &EarlyContext<'_>, then_span: Span, else_: &ast::Expr) {
         if let ast::ExprKind::Block(ref block, _) = else_.kind
             && !block_starts_with_comment(cx, block)
@@ -113,12 +128,11 @@ impl CollapsibleIf {
         }
     }
 
-    fn check_collapsible_if_if(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
+    fn check_collapsible_if_if(&self, cx: &EarlyContext<'_>, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
         if let Some(inner) = expr_block(then)
             && inner.attrs.is_empty()
             && let ast::ExprKind::If(ref check_inner, ref content, None) = inner.kind
-            // Prevent triggering on `if c { if let a = b { .. } }`.
-            && !matches!(check_inner.kind, ast::ExprKind::Let(..))
+            && self.is_collapsible(check_inner)
             && let ctxt = expr.span.ctxt()
             && inner.span.ctxt() == ctxt
         {
@@ -151,6 +165,8 @@ impl CollapsibleIf {
     }
 }
 
+impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
+
 impl EarlyLintPass for CollapsibleIf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if let ast::ExprKind::If(cond, then, else_) = &expr.kind
@@ -158,9 +174,8 @@ impl EarlyLintPass for CollapsibleIf {
         {
             if let Some(else_) = else_ {
                 Self::check_collapsible_else_if(cx, then.span, else_);
-            } else if !matches!(cond.kind, ast::ExprKind::Let(..)) {
-                // Prevent triggering on `if c { if let a = b { .. } }`.
-                Self::check_collapsible_if_if(cx, expr, cond, then);
+            } else if self.is_collapsible(cond) {
+                self.check_collapsible_if_if(cx, expr, cond, then);
             }
         }
     }
