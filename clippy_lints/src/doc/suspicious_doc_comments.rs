@@ -12,11 +12,11 @@ use super::SUSPICIOUS_DOC_COMMENTS;
 pub fn check(cx: &LateContext<'_>, attrs: &[Attribute]) -> bool {
     let replacements: Vec<_> = collect_doc_replacements(attrs);
 
-    if let Some((&(lo_span, _), &(hi_span, _))) = replacements.first().zip(replacements.last()) {
+    if let Some(span) = replacements.iter().map(|(sp, _)| *sp).reduce(Span::to) {
         span_lint_and_then(
             cx,
             SUSPICIOUS_DOC_COMMENTS,
-            lo_span.to(hi_span),
+            span,
             "this is an outer doc comment and does not apply to the parent module or crate",
             |diag| {
                 diag.multipart_suggestion(
