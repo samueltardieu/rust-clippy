@@ -1,5 +1,6 @@
 #![warn(clippy::iter_kv_map)]
 #![allow(unused_mut, clippy::redundant_clone, clippy::suspicious_map, clippy::map_identity)]
+#![feature(unsigned_is_multiple_of)]
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -30,15 +31,19 @@ fn main() {
 
     let _ = map.clone().iter().map(|(_, val)| val).collect::<Vec<_>>();
     //~^ iter_kv_map
-    let _ = map.iter().map(|(key, _)| key).filter(|x| *x % 2 == 0).count();
+    let _ = map.iter().map(|(key, _)| key).filter(|x| x.is_multiple_of(2)).count();
     //~^ iter_kv_map
 
     // Don't lint
-    let _ = map.iter().filter(|(_, val)| *val % 2 == 0).map(|(key, _)| key).count();
+    let _ = map
+        .iter()
+        .filter(|(_, val)| val.is_multiple_of(2))
+        .map(|(key, _)| key)
+        .count();
     let _ = map.iter().map(get_key).collect::<Vec<_>>();
 
     // Linting the following could be an improvement to the lint
-    // map.iter().filter_map(|(_, val)| (val % 2 == 0).then(val * 17)).count();
+    // map.iter().filter_map(|(_, val)| (val.is_multiple_of(2)).then(val * 17)).count();
 
     // Lint
     let _ = map.iter().map(|(key, _value)| key * 9).count();
@@ -86,15 +91,19 @@ fn main() {
 
     let _ = map.clone().iter().map(|(_, val)| val).collect::<Vec<_>>();
     //~^ iter_kv_map
-    let _ = map.iter().map(|(key, _)| key).filter(|x| *x % 2 == 0).count();
+    let _ = map.iter().map(|(key, _)| key).filter(|x| x.is_multiple_of(2)).count();
     //~^ iter_kv_map
 
     // Don't lint
-    let _ = map.iter().filter(|(_, val)| *val % 2 == 0).map(|(key, _)| key).count();
+    let _ = map
+        .iter()
+        .filter(|(_, val)| val.is_multiple_of(2))
+        .map(|(key, _)| key)
+        .count();
     let _ = map.iter().map(get_key).collect::<Vec<_>>();
 
     // Linting the following could be an improvement to the lint
-    // map.iter().filter_map(|(_, val)| (val % 2 == 0).then(val * 17)).count();
+    // map.iter().filter_map(|(_, val)| (val.is_multiple_of(2)).then(val * 17)).count();
 
     // Lint
     let _ = map.iter().map(|(key, _value)| key * 9).count();

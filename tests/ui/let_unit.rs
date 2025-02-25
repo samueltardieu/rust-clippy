@@ -1,5 +1,6 @@
 #![warn(clippy::let_unit_value)]
 #![allow(unused, clippy::no_effect, clippy::needless_late_init, path_statements)]
+#![feature(unsigned_is_multiple_of)]
 
 macro_rules! let_and_return {
     ($n:expr) => {{
@@ -61,7 +62,7 @@ fn multiline_sugg() {
         //~^ let_unit_value
         .into_iter()
         .map(|i| i * 2)
-        .filter(|i| i % 2 == 0)
+        .filter(|i| i.is_multiple_of(2))
         .map(|_| ())
         .next()
         .unwrap();

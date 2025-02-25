@@ -1,4 +1,5 @@
 #![allow(clippy::uninlined_format_args, clippy::double_ended_iterator_last)]
+#![feature(unsigned_is_multiple_of)]
 
 use std::iter::repeat;
 fn square_is_lower_64(x: &u32) -> bool {
@@ -38,7 +39,7 @@ fn infinite_iters() {
     //~^ infinite_iter
 
     // infinite iter
-    (0_u64..).filter(|x| x % 2 == 0).last();
+    (0_u64..).filter(|x| x.is_multiple_of(2)).last();
     //~^ infinite_iter
 
     // not an infinite, because ranges are double-ended

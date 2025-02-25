@@ -1,5 +1,5 @@
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:7:13
+  --> tests/ui/manual_contains.rs:8:13
    |
 LL |     let _ = values.iter().any(|&v| v == 4);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&4)`
@@ -8,67 +8,67 @@ LL |     let _ = values.iter().any(|&v| v == 4);
    = help: to override `-D warnings` add `#[allow(clippy::manual_contains)]`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:12:13
+  --> tests/ui/manual_contains.rs:13:13
    |
 LL |     let _ = values.iter().any(|&v| v == 4);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&4)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:16:13
+  --> tests/ui/manual_contains.rs:17:13
    |
 LL |     let _ = values.iter().any(|&v| v == 10);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&10)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:21:13
+  --> tests/ui/manual_contains.rs:22:13
    |
 LL |     let _ = values.iter().any(|&v| v == num);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&num)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:26:13
+  --> tests/ui/manual_contains.rs:27:13
    |
 LL |     let _ = values.iter().any(|&v| num == v);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&num)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:30:13
+  --> tests/ui/manual_contains.rs:31:13
    |
 LL |     let _ = values.iter().any(|v| *v == 4);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&4)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:35:13
+  --> tests/ui/manual_contains.rs:36:13
    |
 LL |     let _ = values.iter().any(|&v| 4 == v);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&4)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:41:13
+  --> tests/ui/manual_contains.rs:42:13
    |
 LL |     let _ = values.iter().any(|v| *v == *a);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(a)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:46:13
+  --> tests/ui/manual_contains.rs:47:13
    |
 LL |     let _ = values.iter().any(|&v| v == "4");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&"4")`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:51:13
+  --> tests/ui/manual_contains.rs:52:13
    |
 LL |     let _ = values.iter().any(|&v| v == 4 + 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&(4 + 1))`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:91:5
+  --> tests/ui/manual_contains.rs:92:5
    |
 LL |     values.iter().any(|&v| v == 10)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&10)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:96:5
+  --> tests/ui/manual_contains.rs:97:5
    |
 LL |     values.iter().any(|&v| v == 10)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&10)`
