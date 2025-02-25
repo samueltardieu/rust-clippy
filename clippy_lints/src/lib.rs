@@ -12,6 +12,7 @@
 #![feature(round_char_boundary)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
+#![feature(unsigned_is_multiple_of)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 #![allow(
