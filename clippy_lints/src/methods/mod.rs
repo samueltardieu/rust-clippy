@@ -4808,26 +4808,39 @@ impl_lint_pass!(Methods => [
     STRING_LIT_AS_BYTES,
 ]);
 
-/// Extracts a method call name, args, and `Span` of the method name.
-pub fn method_call<'tcx>(
-    recv: &'tcx Expr<'tcx>,
-) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
-    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
-        if !args.iter().any(|e| e.span.from_expansion()) && !receiver.span.from_expansion() {
-            let name = path.ident.name.as_str();
-            return Some((name, receiver, args, path.ident.span, call_span));
-        }
+/// Extracts a method call name, args, and `Span` of the method name, and check if the method call,
+/// the receiver or any of the args come from expansion.
+fn method_call_with_expansion<'tcx>(
+    expr: &'tcx Expr<'tcx>,
+) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span, bool)> {
+    if let ExprKind::MethodCall(path, receiver, args, call_span) = expr.kind {
+        let name = path.ident.name.as_str();
+        let from_expansion = expr.span.from_expansion()
+            || receiver.span.from_expansion()
+            || args.iter().any(|e| e.span.from_expansion());
+        Some((name, receiver, args, path.ident.span, call_span, from_expansion))
+    } else {
+        None
     }
-    None
+}
+
+/// Extracts a method call name, args, and `Span` of the method name. Returns `None` if method call,
+/// the receiver or any of the args come from expansion.
+pub fn method_call<'tcx>(
+    expr: &'tcx Expr<'tcx>,
+) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
+    method_call_with_expansion(expr).and_then(|(name, recv, args, span, call_span, from_expansion)| {
+        (!from_expansion).then_some((name, recv, args, span, call_span))
+    })
 }
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        self.check_methods(cx, expr);
+
         if expr.span.from_expansion() {
             return;
         }
-
-        self.check_methods(cx, expr);
 
         match expr.kind {
             ExprKind::Call(func, args) => {
@@ -5006,7 +5019,18 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 impl Methods {
     #[allow(clippy::too_many_lines)]
     fn check_methods<'tcx>(&self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((name, recv, args, span, call_span)) = method_call(expr) {
+        let Some((name, recv, args, span, call_span, from_expansion)) = method_call_with_expansion(expr) else {
+            return;
+        };
+
+        if from_expansion {
+            // Checks to run if the method call, the receiver or any arg come from expansion.
+            match (name, args) {
+                ("as_bytes", []) => string_as_bytes::check(cx, expr, recv),
+                _ => {},
+            }
+        } else {
+            // Checks to run if the method call, the receiver, and all arg do not come from expansion.
             match (name, args) {
                 ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
                     zst_offset::check(cx, expr, recv);
