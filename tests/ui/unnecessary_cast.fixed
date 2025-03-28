@@ -310,4 +310,20 @@ mod fixable {
         let _ = threshold;
         //~^ unnecessary_cast
     }
+
+    fn with_prim_ty() {
+        let _ = i64::MAX;
+        //~^ unnecessary_cast
+
+        let threshold = 20;
+        let threshold = if threshold == 0 {
+            i64::MAX
+        } else if threshold <= 60 {
+            10
+        } else {
+            0
+        };
+        let _ = threshold;
+        //~^ unnecessary_cast
+    }
 }
