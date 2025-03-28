@@ -41,7 +41,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>, in_arg: bool) -> C
 
         ExprKind::Call(callee, args) => {
             let lhs = expr_type_certainty(cx, callee, false);
-            let rhs = if type_is_inferable_from_arguments(cx, expr) {
+            let rhs = if type_is_inferable_from_arguments(cx, expr, false) {
                 meet(args.iter().map(|arg| expr_type_certainty(cx, arg, true)))
             } else {
                 Certainty::Uncertain
@@ -51,6 +51,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>, in_arg: bool) -> C
 
         ExprKind::MethodCall(method, receiver, args, _) => {
             let mut receiver_type_certainty = expr_type_certainty(cx, receiver, false);
+
             // Even if `receiver_type_certainty` is `Certain(Some(..))`, the `Self` type in the method
             // identified by `type_dependent_def_id(..)` can differ. This can happen as a result of a `deref`,
             // for example. So update the `DefId` in `receiver_type_certainty` (if any).
@@ -60,15 +61,14 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>, in_arg: bool) -> C
                 receiver_type_certainty = receiver_type_certainty.with_def_id(self_ty_def_id);
             }
             let lhs = path_segment_certainty(cx, receiver_type_certainty, method, false);
-            let rhs = if type_is_inferable_from_arguments(cx, expr) {
-                meet(
+            if type_is_inferable_from_arguments(cx, expr, receiver_type_certainty.is_certain()) {
+                lhs.join(meet(
                     std::iter::once(receiver_type_certainty)
                         .chain(args.iter().map(|arg| expr_type_certainty(cx, arg, true))),
-                )
+                ))
             } else {
                 Certainty::Uncertain
-            };
-            lhs.join(rhs)
+            }
         },
 
         ExprKind::Tup(exprs) => meet(exprs.iter().map(|expr| expr_type_certainty(cx, expr, in_arg))),
@@ -334,17 +334,24 @@ fn update_res(
 }
 
 #[allow(clippy::cast_possible_truncation)]
-fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let Some(callee_def_id) = (match expr.kind {
+fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>, receiver_is_certain: bool) -> bool {
+    let Some((callee_def_id, skip)) = (match expr.kind {
         ExprKind::Call(callee, _) => {
             let callee_ty = cx.typeck_results().expr_ty(callee);
             if let ty::FnDef(callee_def_id, _) = callee_ty.kind() {
-                Some(*callee_def_id)
+                Some((*callee_def_id, 0))
             } else {
                 None
             }
         },
-        ExprKind::MethodCall(_, _, _, _) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(_, _, _, _) => cx.typeck_results().type_dependent_def_id(expr.hir_id).map(|def_id| {
+            (
+                def_id,
+                // If the receiver is not certain, skip the first input while checking if generic
+                // parameters are found in inputs.
+                if receiver_is_certain { 0 } else { 1 },
+            )
+        }),
         _ => None,
     }) else {
         return false;
@@ -358,6 +365,7 @@ fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bo
         fn_sig
             .inputs()
             .iter()
+            .skip(skip)
             .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
     })
 }
