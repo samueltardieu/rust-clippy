@@ -265,5 +265,17 @@ error: casting to the same type is unnecessary (`i64` -> `i64`)
 LL |         let _ = threshold as i64;
    |                 ^^^^^^^^^^^^^^^^ help: try: `threshold`
 
-error: aborting due to 44 previous errors
+error: casting to the same type is unnecessary (`i64` -> `i64`)
+  --> tests/ui/unnecessary_cast.rs:301:17
+   |
+LL |         let _ = i64::MAX as i64;
+   |                 ^^^^^^^^^^^^^^^ help: try: `i64::MAX`
+
+error: casting to the same type is unnecessary (`i64` -> `i64`)
+  --> tests/ui/unnecessary_cast.rs:312:17
+   |
+LL |         let _ = threshold as i64;
+   |                 ^^^^^^^^^^^^^^^^ help: try: `threshold`
+
+error: aborting due to 46 previous errors
 
