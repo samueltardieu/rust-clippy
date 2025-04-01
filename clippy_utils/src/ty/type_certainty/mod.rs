@@ -361,7 +361,12 @@ fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>, recei
     let generics = cx.tcx.generics_of(callee_def_id);
     let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
 
-    // Check that all type parameters appear in the functions input types.
+    // If no type parameter appear in the function's output type, the type is inferable
+    if !contains_any_generic_type(fn_sig.output().skip_binder()) {
+        return true;
+    }
+
+    // Check that all type parameters appear in the function's input types.
     (0..(generics.parent_count + generics.own_params.len()) as u32).all(|index| {
         fn_sig
             .inputs()
@@ -382,4 +387,9 @@ fn adt_def_id(ty: Ty<'_>) -> Option<DefId> {
 fn contains_param(ty: Ty<'_>, index: u32) -> bool {
     ty.walk()
         .any(|arg| matches!(arg.kind(), GenericArgKind::Type(ty) if ty.is_param(index)))
+}
+
+fn contains_any_generic_type(ty: Ty<'_>) -> bool {
+    ty.walk()
+        .any(|arg| matches!(arg.unpack(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_))))
 }
