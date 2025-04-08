@@ -146,7 +146,7 @@ mod unit_test {
     use super::*;
 
     #[test]
-    fn has_no_ident_token_works() {
+    fn test_has_no_ident_token() {
         let input = "{ field: u8 }";
         assert!(!has_no_ident_token(input));
 

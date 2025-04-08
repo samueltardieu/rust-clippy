@@ -894,7 +894,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_contents_works() {
+    fn test_parse_contents() {
         static CONTENTS: &str = r#"
             declare_clippy_lint! {
                 #[clippy::version = "Hello Clippy!"]
@@ -937,7 +937,7 @@ mod tests {
     }
 
     #[test]
-    fn usable_lints_works() {
+    fn test_usable_lints() {
         let lints = vec![
             Lint::new(
                 "should_assert_eq2",
@@ -972,7 +972,7 @@ mod tests {
     }
 
     #[test]
-    fn by_lint_group_works() {
+    fn test_by_lint_group() {
         let lints = vec![
             Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
             Lint::new(

@@ -184,7 +184,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn struct_local() {
+    fn test_struct_local() {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
         assert_eq!(vi.minor, 4);
@@ -198,13 +198,13 @@ mod test {
     }
 
     #[test]
-    fn display_local() {
+    fn test_display_local() {
         let vi = get_version_info!();
         assert_eq!(vi.to_string(), "rustc_tools_util 0.4.2");
     }
 
     #[test]
-    fn debug_local() {
+    fn test_debug_local() {
         let vi = get_version_info!();
         let s = format!("{vi:?}");
         assert_eq!(

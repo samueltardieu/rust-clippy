@@ -764,7 +764,7 @@ mod test {
     use super::reindent_multiline;
 
     #[test]
-    fn reindent_multiline_single_line() {
+    fn test_reindent_multiline_single_line() {
         assert_eq!("", reindent_multiline("", false, None));
         assert_eq!("...", reindent_multiline("...", false, None));
         assert_eq!("...", reindent_multiline("    ...", false, None));
@@ -774,7 +774,7 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn reindent_multiline_block() {
+    fn test_reindent_multiline_block() {
         assert_eq!("\
     if x {
         y
@@ -799,7 +799,7 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn reindent_multiline_empty_line() {
+    fn test_reindent_multiline_empty_line() {
         assert_eq!("\
     if x {
         y
@@ -816,7 +816,7 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn reindent_multiline_lines_deeper() {
+    fn test_reindent_multiline_lines_deeper() {
         assert_eq!("\
         if x {
             y
