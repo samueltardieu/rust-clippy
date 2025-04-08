@@ -89,9 +89,9 @@ mod m4 {
     // FIX DOES NOT COMPILE
     #[cfg(test)]
     #[test]
-    fn f() {
+    fn f_works() {
         //~^ ERROR: redundant `test_` prefix in test function name
-        //~| HELP: consider removing the `test_` prefix
+        //~| HELP: consider function renaming (just removing `test_` prefix will cause a name conflict)
         let a = Some(3);
         let _ = a.map(f);
     }

@@ -91,7 +91,7 @@ mod m4 {
     #[test]
     fn test_f() {
         //~^ ERROR: redundant `test_` prefix in test function name
-        //~| HELP: consider removing the `test_` prefix
+        //~| HELP: consider function renaming (just removing `test_` prefix will cause a name conflict)
         let a = Some(3);
         let _ = a.map(f);
     }

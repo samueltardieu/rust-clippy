@@ -29,7 +29,13 @@ error: redundant `test_` prefix in test function name
   --> tests/ui/redundant_test_prefix.rs:92:8
    |
 LL |     fn test_f() {
-   |        ^^^^^^ help: consider removing the `test_` prefix: `f`
+   |        ^^^^^^
+   |
+help: consider function renaming (just removing `test_` prefix will cause a name conflict)
+   |
+LL -     fn test_f() {
+LL +     fn f_works() {
+   |
 
 error: redundant `test_` prefix in test function name
   --> tests/ui/redundant_test_prefix.rs:105:8
