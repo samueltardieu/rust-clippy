@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantTestPrefix {
                     msg,
                     "consider function renaming (just removing `test_` prefix will cause a name conflict)",
                     non_prefixed,
-                    Applicability::HasPlaceholders,
+                    Applicability::MaybeIncorrect,
                 );
             } else {
                 // If `non_prefixed` is a valid identifier and does not conflict with another function,
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantTestPrefix {
                     msg,
                     "consider removing the `test_` prefix",
                     non_prefixed,
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
             }
         }
