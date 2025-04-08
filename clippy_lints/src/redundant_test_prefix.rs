@@ -1,14 +1,15 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{is_in_cfg_test, is_test_function};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, Body, ExprKind, FnDecl};
+use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, Symbol, edition};
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -37,20 +38,18 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.84.0"]
     pub REDUNDANT_TEST_PREFIX,
-    pedantic,
+    restriction,
     "redundant `test_` prefix in test function name"
 }
 
 pub struct RedundantTestPrefix {
     check_outside_test_cfg: bool,
-    custom_sufix: String,
 }
 
 impl RedundantTestPrefix {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             check_outside_test_cfg: conf.redundant_test_prefix_check_outside_cfg_test,
-            custom_sufix: conf.redundant_test_prefix_custom_suffix.clone(),
         }
     }
 }
@@ -72,6 +71,16 @@ impl<'tcx> LateLintPass<'tcx> for RedundantTestPrefix {
             return;
         };
 
+        // Skip the lint if the function is within a macro expansion.
+        if ident.span.from_expansion() {
+            return;
+        }
+
+        // Skip if the function name does not start with `test_`.
+        if !ident.as_str().starts_with("test_") {
+            return;
+        }
+
         // Skip the lint if the function is not within a node marked with `#[cfg(test)]` attribute.
         // Continue if the function is inside the node marked with `#[cfg(test)]` or lint is enforced
         // via configuration (most likely to include integration tests in lint's scope).
@@ -79,24 +88,47 @@ impl<'tcx> LateLintPass<'tcx> for RedundantTestPrefix {
             return;
         }
 
-        if is_test_function(cx.tcx, cx.tcx.local_def_id_to_hir_id(fn_def_id)) && ident.as_str().starts_with("test_") {
+        if is_test_function(cx.tcx, cx.tcx.local_def_id_to_hir_id(fn_def_id)) {
+            let msg = "redundant `test_` prefix in test function name";
             let mut non_prefixed = ident.as_str().trim_start_matches("test_").to_string();
-            let mut help_msg = "consider removing the `test_` prefix";
-            // If `non_prefixed` conflicts with another function in the same module/scope,
-            // add extra suffix to avoid name conflict.
-            if name_conflicts(cx, body, &non_prefixed) {
-                non_prefixed.push_str(&self.custom_sufix);
-                help_msg = "consider removing the `test_` prefix (suffix avoids name conflict)";
+
+            if is_invalid_ident(&non_prefixed) {
+                // If the prefix-trimmed name is not a valid function name, do not provide an
+                // automatic fix, just suggest renaming the function.
+                span_lint_and_help(
+                    cx,
+                    REDUNDANT_TEST_PREFIX,
+                    ident.span,
+                    msg,
+                    None,
+                    "consider function renaming (just removing `test_` prefix will produce invalid function name)",
+                );
+            } else if name_conflicts(cx, body, &non_prefixed) {
+                // If `non_prefixed` conflicts with another function in the same module/scope,
+                // do not provide an automatic fix, but still emit a fix suggestion.
+                non_prefixed.push_str("_works");
+                span_lint_and_sugg(
+                    cx,
+                    REDUNDANT_TEST_PREFIX,
+                    ident.span,
+                    msg,
+                    "consider function renaming (just removing `test_` prefix will cause a name conflict)",
+                    non_prefixed,
+                    Applicability::HasPlaceholders,
+                )
+            } else {
+                // If `non_prefixed` is a valid identifier and does not conflict with another function,
+                // so we can suggest an auto-fix.
+                span_lint_and_sugg(
+                    cx,
+                    REDUNDANT_TEST_PREFIX,
+                    ident.span,
+                    msg,
+                    "consider removing the `test_` prefix",
+                    non_prefixed,
+                    Applicability::MachineApplicable,
+                )
             }
-            span_lint_and_sugg(
-                cx,
-                REDUNDANT_TEST_PREFIX,
-                ident.span,
-                "redundant `test_` prefix in test function name",
-                help_msg,
-                non_prefixed,
-                Applicability::MachineApplicable,
-            );
         }
     }
 }
@@ -111,11 +143,11 @@ fn name_conflicts<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, fn_name: &
     let id = body.id().hir_id;
 
     // Iterate over items in the same module/scope
-    let (module, _module_span, _module_hir) = tcx.hir().get_module(tcx.parent_module(id));
+    let (module, _module_span, _module_hir) = tcx.hir_get_module(tcx.parent_module(id));
     for item in module.item_ids {
-        let item = tcx.hir().item(*item);
-        if let hir::ItemKind::Fn(..) = item.kind {
-            if item.ident.name.as_str() == fn_name {
+        let item = tcx.hir_item(*item);
+        if let hir::ItemKind::Fn { ident, .. } = item.kind {
+            if ident.name.as_str() == fn_name {
                 // Name conflict found
                 return true;
             }
@@ -140,4 +172,9 @@ fn name_conflicts<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, fn_name: &
         ControlFlow::Continue(())
     })
     .is_some()
+}
+
+fn is_invalid_ident(ident: &str) -> bool {
+    // The identifier is either a reserved keyword, or starts with an invalid sequence.
+    Symbol::intern(ident).is_reserved(|| edition::LATEST_STABLE_EDITION) || !is_ident(ident)
 }

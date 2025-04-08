@@ -1,3 +1,5 @@
+//@no-rustfix: name conflicts
+
 #![allow(dead_code)]
 #![warn(clippy::redundant_test_prefix)]
 
@@ -31,19 +33,46 @@ fn test_f4() {
     // No collision with other functions, should `test_` prefix be removed.
 }
 
+fn f5() {}
+
+#[cfg(test)]
+#[test]
+fn test_f5() {
+    //~^ ERROR: redundant `test_` prefix in test function name
+    //~| HELP: consider function renaming (just removing `test_` prefix will cause a name conflict)
+
+    todo!()
+    // Has prefix, has `#[test]` attribute, within a `#[cfg(test)]`.
+    // Collision with existing function.
+}
+
 mod m1 {
-    pub fn f5() {}
+    pub fn f6() {}
+    pub fn f7() {}
 }
 
 #[cfg(test)]
 #[test]
 fn test_f6() {
     //~^ ERROR: redundant `test_` prefix in test function name
+    //~| HELP: consider function renaming (just removing `test_` prefix will cause a name conflict)
+
+    use m1::f6;
+
+    f6();
+    // Has prefix, has `#[test]` attribute, within a `#[cfg(test)]`.
+    // No collision, but has a function call that will result in recursion.
+}
+
+#[cfg(test)]
+#[test]
+fn test_f8() {
+    //~^ ERROR: redundant `test_` prefix in test function name
     //~| HELP: consider removing the `test_` prefix
 
-    use m1::f5;
+    use m1::f7;
 
-    f5();
+    f7();
     // Has prefix, has `#[test]` attribute, within a `#[cfg(test)]`.
     // No collision, has function call, but it will not result in recursion.
 }
@@ -100,6 +129,51 @@ mod tests {
     fn test_f6() {
         //~^ ERROR: redundant `test_` prefix in test function name
         //~| HELP: consider removing the `test_` prefix
+    }
+
+    #[test]
+    fn test_1() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: removing `test_` prefix will produce invalid function name
+
+        todo!()
+        // `1` is invalid function name, so suggestion to rename is emitted
+    }
+
+    #[test]
+    fn test_const() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: removing `test_` prefix will produce invalid function name
+
+        todo!()
+        // `const` is reserved keyword, so suggestion to rename is emitted
+    }
+
+    #[test]
+    fn test_async() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: removing `test_` prefix will produce invalid function name
+
+        todo!()
+        // `async` is reserved keyword, so suggestion to rename is emitted
+    }
+
+    #[test]
+    fn test_yield() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: removing `test_` prefix will produce invalid function name
+
+        todo!()
+        // `yield` is reserved keyword for future use, so suggestion to rename is emitted
+    }
+
+    #[test]
+    fn test_() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: removing `test_` prefix will produce invalid function name
+
+        todo!()
+        // `` is invalid function name, so suggestion to rename is emitted
     }
 }
 
