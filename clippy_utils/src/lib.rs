@@ -2703,17 +2703,15 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
 /// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
 pub fn is_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
     with_test_item_names(tcx, tcx.parent_module(id), |names| {
-        let node = tcx.hir_node(id);
-        once((id, node)).any(|(_id, node)| {
-            if let Node::Item(item) = node
-                && let ItemKind::Fn { ident, .. } = item.kind
-            {
-                // Note that we have sorted the item names in the visitor,
-                // so the binary_search gets the same as `contains`, but faster.
-                return names.binary_search(&ident.name).is_ok();
-            }
+        if let Node::Item(item) = tcx.hir_node(id)
+            && let ItemKind::Fn { ident, .. } = item.kind
+        {
+            // Note that we have sorted the item names in the visitor,
+            // so the binary_search gets the same as `contains`, but faster.
+            names.binary_search(&ident.name).is_ok()
+        } else {
             false
-        })
+        }
     })
 }
 
