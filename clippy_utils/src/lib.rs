@@ -2696,10 +2696,11 @@ pub fn is_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
         let node = tcx.hir_node(id);
         once((id, node)).any(|(_id, node)| {
             if let Node::Item(item) = node
-                && let ItemKind::Fn { ident, .. } = item.kind {
-                    // Note that we have sorted the item names in the visitor,
-                    // so the binary_search gets the same as `contains`, but faster.
-                    return names.binary_search(&ident.name).is_ok();
+                && let ItemKind::Fn { ident, .. } = item.kind
+            {
+                // Note that we have sorted the item names in the visitor,
+                // so the binary_search gets the same as `contains`, but faster.
+                return names.binary_search(&ident.name).is_ok();
             }
             false
         })
