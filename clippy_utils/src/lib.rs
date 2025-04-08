@@ -2697,7 +2697,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
 
 /// Checks if `id` has a `#[test]` attribute applied
 ///
-/// This only checks directly applied attributes, to see if a node has a parent function marked with
+/// This only checks directly applied attributes. To see if a node has a parent function marked with
 /// `#[test]` use [`is_in_test_function`].
 ///
 /// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
