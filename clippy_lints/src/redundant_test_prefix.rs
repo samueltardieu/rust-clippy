@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantTestPrefix {
                     "consider function renaming (just removing `test_` prefix will cause a name conflict)",
                     non_prefixed,
                     Applicability::HasPlaceholders,
-                )
+                );
             } else {
                 // If `non_prefixed` is a valid identifier and does not conflict with another function,
                 // so we can suggest an auto-fix.
@@ -127,7 +127,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantTestPrefix {
                     "consider removing the `test_` prefix",
                     non_prefixed,
                     Applicability::MachineApplicable,
-                )
+                );
             }
         }
     }
@@ -146,28 +146,25 @@ fn name_conflicts<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, fn_name: &
     let (module, _module_span, _module_hir) = tcx.hir_get_module(tcx.parent_module(id));
     for item in module.item_ids {
         let item = tcx.hir_item(*item);
-        if let hir::ItemKind::Fn { ident, .. } = item.kind {
-            if ident.name.as_str() == fn_name {
-                // Name conflict found
-                return true;
-            }
+        if let hir::ItemKind::Fn { ident, .. } = item.kind
+            && ident.name.as_str() == fn_name
+        {
+            // Name conflict found
+            return true;
         }
     }
 
     // Also check that within the body of the function there is also no function call
     // with the same name (since it will result in recursion)
     for_each_expr(cx, body, |expr| {
-        if let ExprKind::Call(path_expr, _) = expr.kind {
-            if let ExprKind::Path(qpath) = &path_expr.kind {
-                if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
-                    if let Some(name) = tcx.opt_item_name(def_id) {
-                        if name.as_str() == fn_name {
-                            // Function call with the same name found
-                            return ControlFlow::Break(());
-                        }
-                    }
-                }
-            }
+        if let ExprKind::Call(path_expr, _) = expr.kind
+            && let ExprKind::Path(qpath) = &path_expr.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()
+            && let Some(name) = tcx.opt_item_name(def_id)
+            && name.as_str() == fn_name
+        {
+            // Function call with the same name found
+            return ControlFlow::Break(());
         }
         ControlFlow::Continue(())
     })
