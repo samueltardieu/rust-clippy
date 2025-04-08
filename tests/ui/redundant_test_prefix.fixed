@@ -48,6 +48,55 @@ fn f6() {
     // No collision, has function call, but it will not result in recursion.
 }
 
+mod m2 {
+    use super::m1::f5;
+
+    // FIX DOES NOT COMPILE
+    #[cfg(test)]
+    #[test]
+    fn f5() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: consider removing the `test_` prefix
+    }
+}
+
+mod m3 {
+    use super::m1::*;
+
+    #[cfg(test)]
+    #[test]
+    fn f5() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: consider removing the `test_` prefix
+        eprintln!("Wrong one called");
+    }
+
+    // WRONG FUNCTION CALLED AFTER FIX
+    fn some_func() {
+        f5();
+    }
+}
+
+mod m4 {
+    mod m5 {
+        pub fn f(_: i32) -> i32 {
+            0
+        }
+    }
+
+    use m5::*;
+
+    // FIX DOES NOT COMPILE
+    #[cfg(test)]
+    #[test]
+    fn f() {
+        //~^ ERROR: redundant `test_` prefix in test function name
+        //~| HELP: consider removing the `test_` prefix
+        let a = Some(3);
+        let _ = a.map(f);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
