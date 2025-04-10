@@ -1,5 +1,5 @@
 error: redundant `test_` prefix in test function name
-  --> tests/ui-toml/redundant_test_prefix/redundant_test_prefix.rs:29:8
+  --> tests/ui-toml/redundant_test_prefix/redundant_test_prefix.rs:27:8
    |
 LL |     fn test_has_annotation() {
    |        ^^^^^^^^^^^^^^^^^^^ help: consider removing the `test_` prefix: `has_annotation`

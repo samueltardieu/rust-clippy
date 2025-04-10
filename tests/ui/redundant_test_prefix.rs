@@ -23,8 +23,6 @@ fn test_f3() {
 #[test]
 fn test_f4() {
     //~^ redundant_test_prefix
-    //~| HELP: consider removing the `test_` prefix
-    //~| HELP: to override `-D warnings` add `#[allow(clippy::redundant_test_prefix)]`
 
     // Has prefix, has `#[test]` attribute, within a `#[cfg(test)]`.
     // No collision with other functions, should `test_` prefix be removed.
@@ -38,7 +36,6 @@ mod m1 {
 #[test]
 fn test_f6() {
     //~^ redundant_test_prefix
-    //~| HELP: consider removing the `test_` prefix
 
     use m1::f5;
 
@@ -54,13 +51,11 @@ mod tests {
     #[test]
     fn test_foo() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
     }
 
     #[test]
     fn test_foo_with_call() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
 
         main();
     }
@@ -68,37 +63,31 @@ mod tests {
     #[test]
     fn test_f1() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
     }
 
     #[test]
     fn test_f2() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
     }
 
     #[test]
     fn test_f3() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
     }
 
     #[test]
     fn test_f4() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
     }
 
     #[test]
     fn test_f5() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
     }
 
     #[test]
     fn test_f6() {
         //~^ redundant_test_prefix
-        //~| HELP: consider removing the `test_` prefix
     }
 }
 
