@@ -275,8 +275,7 @@ fn check_expr_call_default(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     if let hir::ExprKind::Call(callee, &[]) = expr.kind
         // FIXME: does this include `Self { }` style calls, which is equivalent,
         //        but not the same as `Self::default()`?
-        // FIXME: what should the whole_call_expr (3rd arg) be?
-        && is_default_equivalent_call(cx, callee, None)
+        && is_default_equivalent_call(cx, callee, Some(expr))
     {
         true
     } else {
@@ -299,8 +298,11 @@ fn suggest_default_mismatch_new<'tcx>(
         DEFAULT_MISMATCHES_NEW,
         id.into(),
         block.span,
-        format!("consider delegating to the auto-derived `Default` for `{self_type_snip}`"),
+        "the implementation of `new()` does not match the auto-derived `Default`",
         |diag| {
+            diag.help(format!(
+                "consider delegating to the auto-derived `Default` for `{self_type_snip}` or rename the `new()` function"
+            ));
             // This would replace any comments, and we could work around the first comment,
             // but in case of a block of code with multiple statements and comment lines,
             // we can't do much.  For now, we always mark this as a MaybeIncorrect suggestion.
