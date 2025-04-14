@@ -119,25 +119,20 @@ impl UselessVec {
                     },
                 ..
             }) => {
-                let only_slice_uses = for_each_local_use_after_expr(cx, *id, expr.hir_id, |expr| {
+                for_each_local_use_after_expr(cx, *id, expr.hir_id, |expr| {
                     // allow indexing into a vec and some set of allowed method calls that exist on slices, too
-                    if let Some(parent) = get_parent_expr(cx, expr)
-                        && (adjusts_to_slice(cx, expr)
-                            || matches!(parent.kind, ExprKind::Index(..))
-                            || is_allowed_vec_method(cx, parent))
+                    if adjusts_to_slice(cx, expr) {
+                        ControlFlow::Continue(())
+                    } else if let Some(parent) = get_parent_expr(cx, expr)
+                        && (matches!(parent.kind, ExprKind::Index(..)) || is_allowed_vec_method(cx, parent))
                     {
                         ControlFlow::Continue(())
                     } else {
-                        ControlFlow::Break(())
+                        ControlFlow::Break(VecToArray::Impossible)
                     }
                 })
-                .is_continue();
-
-                if only_slice_uses {
-                    VecToArray::Possible
-                } else {
-                    VecToArray::Impossible
-                }
+                .break_value()
+                .unwrap_or(VecToArray::Possible)
             },
             // if the local pattern has a specified type, do not lint.
             Node::LetStmt(LetStmt { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
@@ -269,7 +264,7 @@ impl SuggestedType {
     fn snippet(self, cx: &LateContext<'_>, args_span: Option<Span>, len_span: Option<Span>) -> String {
         let maybe_args = args_span
             .and_then(|sp| sp.get_source_text(cx))
-            .map_or(String::new(), |x| x.to_owned());
+            .map_or (String::new(), |x| x.to_owned());
         let maybe_len = len_span
             .and_then(|sp| sp.get_source_text(cx).map(|s| format!("; {s}")))
             .unwrap_or_default();
