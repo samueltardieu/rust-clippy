@@ -8,7 +8,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     AssocItemConstraintKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArgsParentheses, Node, PolyTraitRef,
-    Term,
+    Term, TyKind,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lexer::{TokenKind, tokenize};
@@ -64,8 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
         def_id: LocalDefId,
     ) {
         if let FnRetTy::Return(hir_ty) = decl.output
-            && let ty = lower_ty(cx.tcx, hir_ty)
-            && ty.is_unit()
+            && matches!(hir_ty.kind, TyKind::Tup([]))
             && !hir_ty.span.from_expansion()
             && get_def(span) == get_def(hir_ty.span)
         {
