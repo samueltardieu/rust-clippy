@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
-use clippy_utils::source::{SpanRangeExt, snippet_opt};
+use clippy_utils::source::{SpanRangeExt, snippet_opt, snippet_with_applicability};
 use clippy_utils::ty::expr_type_is_certain;
 use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
@@ -24,8 +24,6 @@ pub(super) fn check<'tcx>(
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
 ) -> bool {
-    let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
-
     if let ty::RawPtr(..) = cast_from.kind()
         // check both mutability and type are the same
         && cast_from.kind() == cast_to.kind()
@@ -57,7 +55,7 @@ pub(super) fn check<'tcx>(
                 "casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"
             ),
             "try",
-            cast_str.clone(),
+            snippet_opt(cx, cast_expr.span).unwrap_or_default().clone(),
             Applicability::MaybeIncorrect,
         );
     }
@@ -103,7 +101,7 @@ pub(super) fn check<'tcx>(
     }
 
     if let Some(lit) = get_numeric_literal(cast_expr) {
-        let literal_str = &cast_str;
+        let literal_str = &snippet_opt(cx, cast_expr.span).unwrap_or_default();
 
         if let LitKind::Int(n, _) = lit.node
             && let Some(src) = cast_expr.span.get_source_text(cx)
@@ -193,6 +191,8 @@ pub(super) fn check<'tcx>(
             _ => MaybeParenOrBlock::Nothing,
         };
 
+        let mut app = Applicability::MachineApplicable;
+        let cast_str = snippet_with_applicability(cx, cast_expr.span, "_", &mut app);
         span_lint_and_sugg(
             cx,
             UNNECESSARY_CAST,
@@ -202,9 +202,9 @@ pub(super) fn check<'tcx>(
             match surrounding {
                 MaybeParenOrBlock::Paren => format!("({cast_str})"),
                 MaybeParenOrBlock::Block => format!("{{ {cast_str} }}"),
-                MaybeParenOrBlock::Nothing => cast_str,
+                MaybeParenOrBlock::Nothing => cast_str.into(),
             },
-            Applicability::MachineApplicable,
+            app,
         );
         return true;
     }
