@@ -573,6 +573,7 @@ fn snippet_with_applicability_sess<'a>(
 /// Converts a span to a code snippet. Returns `None` if not available.
 #[allow(clippy::unnecessary_wraps)]
 pub fn snippet_opt(sess: &impl HasSession, span: Span) -> Option<String> {
+    assert!(!span.in_external_macro(sess.sess().source_map()));
     // Experiment: fail loudly if the snippet cannot be obtained
     match sess.sess().source_map().span_to_snippet(span) {
         Ok(v) => Some(v),
