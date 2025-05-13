@@ -46,7 +46,6 @@ askama = { version = "0.13", default-features = false, features = ["alloc", "con
 rayon = "1.10.0"
 
 # UI test dependencies
-if_chain = "1.0"
 quote = "1.0.25"
 syn = { version = "2.0", features = ["full"] }
 futures = "0.3"

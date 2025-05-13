@@ -30,7 +30,6 @@ use std::{fs, iter, thread};
 // Test dependencies may need an `extern crate` here to ensure that they show up
 // in the depinfo file (otherwise cargo thinks they are unused)
 extern crate futures;
-extern crate if_chain;
 extern crate itertools;
 extern crate parking_lot;
 extern crate quote;
@@ -45,7 +44,6 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "clippy_lints",
     "clippy_utils",
     "futures",
-    "if_chain",
     "itertools",
     "parking_lot",
     "quote",
