@@ -170,7 +170,6 @@ generate! {
     has_significant_drop,
     hidden_glob_reexports,
     hygiene,
-    if_chain,
     insert,
     inspect,
     int_roundings,
