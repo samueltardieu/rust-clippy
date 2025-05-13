@@ -7628,6 +7628,7 @@ Released 2018-09-13
 [`panic_params`]: https://clippy.rust-lang.org/main/index.html#panic_params
 [`panicking_overflow_checks`]: https://clippy.rust-lang.org/main/index.html#panicking_overflow_checks
 [`panicking_unwrap`]: https://clippy.rust-lang.org/main/index.html#panicking_unwrap
+[`parsed_string_literals`]: https://clippy.rust-lang.org/main/index.html#parsed_string_literals
 [`partial_pub_fields`]: https://clippy.rust-lang.org/main/index.html#partial_pub_fields
 [`partialeq_ne_impl`]: https://clippy.rust-lang.org/main/index.html#partialeq_ne_impl
 [`partialeq_to_none`]: https://clippy.rust-lang.org/main/index.html#partialeq_to_none
