@@ -321,7 +321,7 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 // Returns whether the type has #[must_use] attribute
-pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn is_must_use_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => find_attr!(cx.tcx.get_all_attrs(adt.did()), AttributeKind::MustUse { .. }),
         ty::Foreign(did) => find_attr!(cx.tcx.get_all_attrs(*did), AttributeKind::MustUse { .. }),
