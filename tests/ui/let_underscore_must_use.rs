@@ -119,4 +119,27 @@ fn main() {
     // Lint because this type should behave as `T`
     let _ = Result::<_, std::convert::Infallible>::Ok(T);
     //~^ let_underscore_must_use
+
+    let (_, x) = (a, a);
+    //~^ let_underscore_must_use
+
+    let (.., x) = (a, a);
+    //~^ let_underscore_must_use
+
+    let (.., x) = (S.f(), S.f());
+    //~^ let_underscore_must_use
+
+    let (x, .., y, z) = (a, a, a, a, a);
+    //~^ let_underscore_must_use
+    //~| let_underscore_must_use
+
+    fn opt_res() -> (Option<String>, Result<String, String>) {
+        todo!()
+    }
+
+    let (_, x) = opt_res();
+    let (x, _) = opt_res();
+    //~^ let_underscore_must_use
+    let _ = opt_res();
+    //~^ let_underscore_must_use
 }
