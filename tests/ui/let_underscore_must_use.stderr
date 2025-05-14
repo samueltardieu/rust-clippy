@@ -104,5 +104,96 @@ LL |     let _ = Result::<_, std::convert::Infallible>::Ok(T);
    |
    = help: consider explicitly using expression value
 
-error: aborting due to 13 previous errors
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:123:5
+   |
+LL |     let (_, x) = (a, a);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: this value will stay unused
+  --> tests/ui/let_underscore_must_use.rs:123:19
+   |
+LL |     let (_, x) = (a, a);
+   |                   ^
+note: the value is forgotten here
+  --> tests/ui/let_underscore_must_use.rs:123:10
+   |
+LL |     let (_, x) = (a, a);
+   |          ^
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:126:5
+   |
+LL |     let (.., x) = (a, a);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this value will stay unused
+  --> tests/ui/let_underscore_must_use.rs:126:20
+   |
+LL |     let (.., x) = (a, a);
+   |                    ^
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on a result of a `#[must_use]` function
+  --> tests/ui/let_underscore_must_use.rs:129:5
+   |
+LL |     let (.., x) = (S.f(), S.f());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the function is called here
+  --> tests/ui/let_underscore_must_use.rs:129:20
+   |
+LL |     let (.., x) = (S.f(), S.f());
+   |                    ^^^^^
+   = help: consider explicitly using function result
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:132:5
+   |
+LL |     let (x, .., y, z) = (a, a, a, a, a);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this value will stay unused
+  --> tests/ui/let_underscore_must_use.rs:132:29
+   |
+LL |     let (x, .., y, z) = (a, a, a, a, a);
+   |                             ^
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:132:5
+   |
+LL |     let (x, .., y, z) = (a, a, a, a, a);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this value will stay unused
+  --> tests/ui/let_underscore_must_use.rs:132:32
+   |
+LL |     let (x, .., y, z) = (a, a, a, a, a);
+   |                                ^
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:141:5
+   |
+LL |     let (x, _) = opt_res();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the value is forgotten here
+  --> tests/ui/let_underscore_must_use.rs:141:13
+   |
+LL |     let (x, _) = opt_res();
+   |             ^
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:143:5
+   |
+LL |     let _ = opt_res();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: aborting due to 20 previous errors
 
