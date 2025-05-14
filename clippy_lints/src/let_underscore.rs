@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::{implements_trait, is_must_use_ty};
 use clippy_utils::{is_from_proc_macro, is_must_use_func_call, paths};
-use rustc_hir::{LetStmt, LocalSource, PatKind};
+use rustc_errors::Diag;
+use rustc_hir::{Expr, ExprKind, LetStmt, LocalSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{GenericArgKind, IsSuggestable};
+use rustc_middle::ty::{GenericArgKind, IsSuggestable, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span};
 
@@ -132,11 +133,73 @@ declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOC
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &LetStmt<'tcx>) {
         if matches!(local.source, LocalSource::Normal)
-            && let PatKind::Wild = local.pat.kind
             && let Some(init) = local.init
             && !local.span.in_external_macro(cx.tcx.sess.source_map())
         {
             let init_ty = cx.typeck_results().expr_ty(init);
+            check_pattern(cx, local, local.pat, Some(init), init_ty);
+        }
+    }
+}
+
+fn check_pattern<'tcx>(
+    cx: &LateContext<'tcx>,
+    local: &LetStmt<'_>,
+    pat: &Pat<'_>,
+    init: Option<&Expr<'tcx>>,
+    init_ty: Ty<'tcx>,
+) {
+    let is_top_level_pat = local.pat.hir_id == pat.hir_id;
+    let is_top_level_init =
+        matches!((init, local.init), (Some(init), Some(local_init)) if init.hir_id == local_init.hir_id);
+    match pat.kind {
+        PatKind::Tuple(subpats, ddp) => {
+            let fields_ty = init_ty.peel_refs().tuple_fields();
+            let field_init = |idx| {
+                if let Some(Expr {
+                    kind: ExprKind::Tup(exprs),
+                    ..
+                }) = init
+                {
+                    Some(&exprs[idx])
+                } else {
+                    None
+                }
+            };
+            for (idx, subpat) in subpats.iter().enumerate() {
+                if ddp.as_opt_usize() == Some(idx) {
+                    // Check fields matching `..` as if it was a wildard. Synthesize a dummy pattern with the
+                    // right `hir_id` and `span` fields.
+                    let pat = Pat {
+                        kind: PatKind::Wild,
+                        ..*pat
+                    };
+                    for field_idx in idx..idx + fields_ty.len() - subpats.len() {
+                        check_pattern(cx, local, &pat, field_init(field_idx), fields_ty[field_idx]);
+                    }
+                }
+
+                let field_idx = if ddp.as_opt_usize().is_some_and(|ddp| ddp <= idx) {
+                    idx + fields_ty.len() - subpats.len()
+                } else {
+                    idx
+                };
+                check_pattern(cx, local, subpat, field_init(field_idx), fields_ty[field_idx]);
+            }
+        },
+
+        PatKind::Wild => {
+            let add_notes = |diag: &mut Diag<'_, ()>, init_note, pat_note| {
+                if let Some(init) = init
+                    && !is_top_level_init
+                {
+                    diag.span_note(init.span, init_note);
+                }
+                if !is_top_level_pat {
+                    diag.span_note(pat.span, pat_note);
+                }
+            };
+
             let contains_sync_guard = init_ty.walk().any(|inner| match inner.kind() {
                 GenericArgKind::Type(inner_ty) => inner_ty
                     .ty_adt_def()
@@ -151,6 +214,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     local.span,
                     "non-binding `let` on a synchronization lock",
                     |diag| {
+                        add_notes(diag, "the lock is here", "the lock is forgotten here");
                         diag.help(
                             "consider using an underscore-prefixed named \
                                 binding or dropping explicitly with `std::mem::drop`",
@@ -158,6 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     },
                 );
             } else if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
+                && let Some(init) = init
                 && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[])
             {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
@@ -167,10 +232,11 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     local.span,
                     "non-binding `let` on a future",
                     |diag| {
+                        add_notes(diag, "the future is here", "the future is forgotten here");
                         diag.help("consider awaiting the future or dropping explicitly with `std::mem::drop`");
                     },
                 );
-            } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init), true) {
+            } else if is_must_use_ty(cx, init_ty, true) {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
                 span_lint_and_then(
                     cx,
@@ -178,10 +244,11 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     local.span,
                     "non-binding `let` on an expression with `#[must_use]` type",
                     |diag| {
+                        add_notes(diag, "this value will stay unused", "the value is forgotten here");
                         diag.help("consider explicitly using expression value");
                     },
                 );
-            } else if is_must_use_func_call(cx, init) {
+            } else if init.is_some_and(|init| is_must_use_func_call(cx, init)) {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
                 span_lint_and_then(
                     cx,
@@ -189,6 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     local.span,
                     "non-binding `let` on a result of a `#[must_use]` function",
                     |diag| {
+                        add_notes(diag, "the function is called here", "the result is forgotten here");
                         diag.help("consider explicitly using function result");
                     },
                 );
@@ -205,7 +273,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 }
 
                 // Ignore if it is from a procedural macro...
-                if is_from_proc_macro(cx, init) {
+                if init.is_some_and(|init| is_from_proc_macro(cx, init)) {
                     return;
                 }
 
@@ -227,6 +295,8 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     },
                 );
             }
-        }
+        },
+
+        _ => {},
     }
 }
