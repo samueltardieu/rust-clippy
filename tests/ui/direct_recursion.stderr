@@ -1,5 +1,5 @@
 error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:8:5
+  --> tests/ui/direct_recursion.rs:7:5
    |
 LL |     i_call_myself_always();
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -11,52 +11,64 @@ LL | #![deny(clippy::direct_recursion)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:14:9
+  --> tests/ui/direct_recursion.rs:13:9
    |
 LL |         i_call_myself_conditionally(false);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:47:9
+  --> tests/ui/direct_recursion.rs:46:9
    |
 LL |         i_have_one_blessing_but_two_calls(bound - 2)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:55:42
+error: this function contains a reference to itself
+  --> tests/ui/direct_recursion.rs:54:42
    |
 LL |     if a < 2 { a } else { (a - 2..a).map(fibo).sum() }
    |                                          ^^^^
 
 error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:64:13
+  --> tests/ui/direct_recursion.rs:63:13
    |
 LL |             parent();
    |             ^^^^^^^^
 
 error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:66:13
+  --> tests/ui/direct_recursion.rs:65:13
    |
 LL |             grand_parent();
    |             ^^^^^^^^^^^^^^
 
 error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:69:9
+  --> tests/ui/direct_recursion.rs:68:9
    |
 LL |         grand_parent();
    |         ^^^^^^^^^^^^^^
 
 error: this method contains a call to itself
-  --> tests/ui/direct_recursion.rs:78:13
+  --> tests/ui/direct_recursion.rs:77:13
    |
 LL |             self.myfun(num - 1);
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: this function contains a call to itself
-  --> tests/ui/direct_recursion.rs:98:17
+  --> tests/ui/direct_recursion.rs:97:17
    |
 LL |             n + Self::rec_sum(n - 1)
    |                 ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: this function contains a call to itself
+  --> tests/ui/direct_recursion.rs:123:9
+   |
+LL |         allow_placed_internally(false);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this function contains a call to itself
+  --> tests/ui/direct_recursion.rs:132:9
+   |
+LL |         expect_placed_internally(false);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 

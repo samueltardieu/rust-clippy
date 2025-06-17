@@ -1,13 +1,11 @@
-use crate::rustc_lint::LintContext;
-use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{get_attr, sym};
+use clippy_utils::get_parent_expr;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Body, Expr, ExprKind, HirId, QPath};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Body, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Instance;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::LocalDefId;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for functions that call themselves from their body.
@@ -68,39 +66,9 @@ declare_clippy_lint! {
     "functions shall not call themselves directly"
 }
 
+#[derive(Default)]
 pub struct DirectRecursion {
-    fn_id_stack: Vec<LocalDefId>,
-    expr_check_blocker: Option<HirId>,
-}
-
-impl DirectRecursion {
-    pub fn new(_: &'static Conf) -> Self {
-        Self {
-            // We preallocate a stack of size 4, because we'll probably need more than 2
-            // but I really don't expect us to ever see more than 4 nested functions
-            fn_id_stack: Vec::with_capacity(4),
-            expr_check_blocker: None,
-        }
-    }
-
-    /// Blocks checking more expressions, using `expr` as the key.
-    fn block_with_expr(&mut self, expr: &Expr<'_>) {
-        self.expr_check_blocker = Some(expr.hir_id);
-    }
-
-    /// Tells whether we're currently allowed to check expressions or not
-    fn is_blocked(&self) -> bool {
-        self.expr_check_blocker.is_some()
-    }
-
-    /// Tries opening the lock using `expr` as the key.
-    fn try_unlocking_with(&mut self, expr: &Expr<'_>) {
-        if let Some(key) = self.expr_check_blocker
-            && key == expr.hir_id
-        {
-            self.expr_check_blocker = None;
-        }
-    }
+    fn_id_stack: Vec<DefId>,
 }
 
 impl_lint_pass!(DirectRecursion => [DIRECT_RECURSION]);
@@ -108,7 +76,8 @@ impl_lint_pass!(DirectRecursion => [DIRECT_RECURSION]);
 impl<'tcx> LateLintPass<'tcx> for DirectRecursion {
     /// Whenever we enter a Body, we push its owner's `DefId` into the stack
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'_>) {
-        self.fn_id_stack.push(cx.tcx.hir_body_owner_def_id(body.id()));
+        self.fn_id_stack
+            .push(cx.tcx.hir_body_owner_def_id(body.id()).to_def_id());
     }
 
     /// We then revert this when we exit said `Body`
@@ -116,26 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for DirectRecursion {
         _ = self.fn_id_stack.pop();
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        // We use this inner lock so that we avoid recursing if we've
-        // already linted an expression that contains the expression
-        // we're now visiting.
-        // This lock is closed whenever we emit a lint, and it's opened
-        // after we exit the node that closed it (see `check_expr_post`)
-        if self.is_blocked() {
-            return;
-        }
-
-        // Before running the lint, we look up the attributes of this Expr.
-        // If it has been marked with `clippy::allowed_recursion`, then
-        // we ignore it, as well as everything inside it; someone has
-        // decided that the recursive calls within it are fine.
-        let attrs = cx.tcx.hir_attrs(expr.hir_id);
-        if get_attr(cx.sess(), attrs, sym::allowed_recursion).next().is_some() {
-            self.block_with_expr(expr);
-            return;
-        }
-
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
             ExprKind::MethodCall(_, _, _, _) => {
                 // Uniquely identifying the `DefId` of method calls requires doing type checking.
@@ -143,62 +93,23 @@ impl<'tcx> LateLintPass<'tcx> for DirectRecursion {
                 // of the `expr` whose kind is `ExprKind::MethodCall`.
                 let typeck = cx.typeck_results();
                 if let Some(type_resolved_def_id) = typeck.type_dependent_def_id(expr.hir_id) {
-                    for stored_fn_id in &self.fn_id_stack {
-                        if stored_fn_id.to_def_id() == type_resolved_def_id {
-                            span_lint(cx, DIRECT_RECURSION, expr.span, "this method contains a call to itself");
-                            self.block_with_expr(expr);
-                            return;
-                        }
+                    if self.fn_id_stack.contains(&type_resolved_def_id) {
+                        span_lint(cx, DIRECT_RECURSION, expr.span, "this method contains a call to itself");
                     }
                 }
             },
-            ExprKind::Call(path_expr, _) => {
-                // This should almost always be true, as far as I'm aware.
-                // `ExprKind::Call` values are supposed to contain an `Expr` of type `ExprKind::Path`
-                // inside of them.
-                if let ExprKind::Path(fn_qpath) = path_expr.kind {
-                    match fn_qpath {
-                        QPath::Resolved(_, path) => {
-                            if let Res::Def(def_kind, def_id) = path.res {
-                                for stored_fn_id in &self.fn_id_stack {
-                                    if stored_fn_id.to_def_id() == def_id {
-                                        let message = match def_kind {
-                                            DefKind::Fn => "this function contains a call to itself",
-                                            DefKind::AssocFn => "this associated function contains a call to itself",
-                                            _ => unreachable!("this lint found something but it doesn't make sense"),
-                                        };
-                                        span_lint(cx, DIRECT_RECURSION, expr.span, message);
-                                        self.block_with_expr(expr);
-                                        return;
-                                    }
-                                }
-                            }
-                        },
-                        QPath::TypeRelative(_, _) => {
-                            // I'm still not sure this is proper.
-                            // It definitely finds the right `DefId`, though.
-                            let typeck = cx.typeck_results();
-                            if let Some(id) = typeck.type_dependent_def_id(path_expr.hir_id)
-                                && let args = typeck.node_args(path_expr.hir_id)
-                                && let Ok(Some(fn_def)) = Instance::try_resolve(cx.tcx, cx.typing_env(), id, args)
-                            {
-                                let type_resolved_def_id = fn_def.def_id();
+            ExprKind::Path(QPath::TypeRelative(_, _)) => {
+                // I'm still not sure this is proper.
+                // It definitely finds the right `DefId`, though.
+                let typeck = cx.typeck_results();
+                if let Some(id) = typeck.type_dependent_def_id(expr.hir_id)
+                    && let args = typeck.node_args(expr.hir_id)
+                    && let Ok(Some(fn_def)) = Instance::try_resolve(cx.tcx, cx.typing_env(), id, args)
+                {
+                    let type_resolved_def_id = fn_def.def_id();
 
-                                for stored_fn_id in &self.fn_id_stack {
-                                    if stored_fn_id.to_def_id() == type_resolved_def_id {
-                                        span_lint(
-                                            cx,
-                                            DIRECT_RECURSION,
-                                            expr.span,
-                                            "this function contains a call to itself",
-                                        );
-                                        self.block_with_expr(expr);
-                                        return;
-                                    }
-                                }
-                            }
-                        },
-                        QPath::LangItem(..) => {},
+                    if self.fn_id_stack.contains(&type_resolved_def_id) {
+                        emit_lint(cx, expr);
                     }
                 }
             },
@@ -219,27 +130,24 @@ impl<'tcx> LateLintPass<'tcx> for DirectRecursion {
                     // 4) If the path that we've captured from `expr` coincides with one of the functions
                     // in the stack, then we know we have a recursive loop.
 
-                    for fn_name in &self.fn_id_stack {
-                        if fn_name.to_def_id() == fn_path_id {
-                            span_lint(
-                                cx,
-                                DIRECT_RECURSION,
-                                expr.span,
-                                "this function contains a call to itself",
-                            );
-                            self.block_with_expr(expr);
-                            return;
-                        }
+                    if self.fn_id_stack.contains(&fn_path_id) {
+                        emit_lint(cx, expr);
                     }
                 }
             },
             _ => {},
         }
     }
+}
 
-    /// Every time we exit an `Expr` node, we see if we can unlock our Visitor
-    /// using it as the key, just in case we blocked it after we entered it.
-    fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        self.try_unlocking_with(expr);
-    }
+fn emit_lint<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    let (span, msg) = if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::Call(func, _) = parent_expr.kind
+        && func.hir_id == expr.hir_id
+    {
+        (parent_expr.span, "this function contains a call to itself")
+    } else {
+        (expr.span, "this function contains a reference to itself")
+    };
+    span_lint(cx, DIRECT_RECURSION, span, msg);
 }

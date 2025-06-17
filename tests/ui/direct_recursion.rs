@@ -1,5 +1,4 @@
 #![deny(clippy::direct_recursion)]
-#![deny(clippy::allow_attributes_without_reason)]
 
 // Basic Cases //
 
@@ -31,7 +30,7 @@ fn i_call_something_else() {
 // This is a test of such a feature.
 fn i_call_myself_in_a_bounded_way(bound: u8) {
     if bound > 0 {
-        #[clippy::allowed_recursion]
+        #[allow(clippy::direct_recursion)]
         i_call_myself_in_a_bounded_way(bound - 1);
     }
 }
@@ -40,7 +39,7 @@ fn i_call_myself_in_a_bounded_way(bound: u8) {
 // let other recursive calls go through.
 fn i_have_one_blessing_but_two_calls(bound: u8) {
     if bound > 25 {
-        #[clippy::allowed_recursion]
+        #[allow(clippy::direct_recursion)]
         i_have_one_blessing_but_two_calls(bound - 1);
     } else if bound > 0 {
         // "WIP: we still need to audit this part of the function"
@@ -108,5 +107,31 @@ impl RecSum for Winter {
         // This should NOT trigger the lint, because even though it's calling the same
         // function (or "the same symbol"), it's not recursively calling its own implementation.
         if n == 0 { 0 } else { n + Summer::rec_sum(n - 1) }
+    }
+}
+
+#[allow(clippy::direct_recursion)]
+fn allow_placed_externally(do_i: bool) {
+    if do_i {
+        allow_placed_externally(false);
+        allow_placed_externally(false);
+    }
+}
+
+fn allow_placed_internally(do_i: bool) {
+    if do_i {
+        allow_placed_internally(false);
+        //~^ direct_recursion
+        #[allow(clippy::direct_recursion)]
+        allow_placed_internally(false);
+    }
+}
+
+fn expect_placed_internally(do_i: bool) {
+    if do_i {
+        expect_placed_internally(false);
+        //~^ direct_recursion
+        #[expect(clippy::direct_recursion)]
+        expect_placed_internally(false);
     }
 }
