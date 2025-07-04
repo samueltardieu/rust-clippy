@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_expr_untyped_identity_function, is_trait_method, path_to_local};
+use clippy_utils::{MapFunc, is_trait_method, path_to_local};
 use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Node, PatKind};
@@ -22,7 +22,7 @@ pub(super) fn check(
     if (is_trait_method(cx, expr, sym::Iterator)
         || is_type_diagnostic_item(cx, caller_ty, sym::Result)
         || is_type_diagnostic_item(cx, caller_ty, sym::Option))
-        && is_expr_untyped_identity_function(cx, map_arg)
+        && MapFunc::from(map_arg).is_expr_untyped_identity_function(cx)
         && let Some(sugg_span) = expr.span.trim_start(caller.span)
     {
         // If the result of `.map(identity)` is used as a mutable reference,

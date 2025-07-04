@@ -60,6 +60,7 @@ pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
 pub mod macros;
+pub mod mapfunc;
 pub mod mir;
 pub mod msrvs;
 pub mod numeric_literal;
@@ -79,6 +80,7 @@ pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
     HirEqInterExpr, SpanlessEq, SpanlessHash, both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over,
 };
+pub use self::mapfunc::MapFunc;
 
 use core::mem;
 use core::ops::ControlFlow;
@@ -1887,114 +1889,6 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     };
 
     did.is_some_and(|did| find_attr!(cx.tcx.get_all_attrs(did), AttributeKind::MustUse { .. }))
-}
-
-/// Checks if a function's body represents the identity function. Looks for bodies of the form:
-/// * `|x| x`
-/// * `|x| return x`
-/// * `|x| { return x }`
-/// * `|x| { return x; }`
-/// * `|(x, y)| (x, y)`
-///
-/// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
-fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
-    fn check_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
-        if cx
-            .typeck_results()
-            .pat_binding_modes()
-            .get(pat.hir_id)
-            .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
-        {
-            // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
-            // the inner patterns become references. Don't consider this the identity function
-            // as that changes types.
-            return false;
-        }
-
-        match (pat.kind, expr.kind) {
-            (PatKind::Binding(_, id, _, _), _) => {
-                path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
-            },
-            (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
-                if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
-            {
-                pats.iter().zip(tup).all(|(pat, expr)| check_pat(cx, pat, expr))
-            },
-            _ => false,
-        }
-    }
-
-    let [param] = func.params else {
-        return false;
-    };
-
-    let mut expr = func.value;
-    loop {
-        match expr.kind {
-            ExprKind::Block(
-                &Block {
-                    stmts: [],
-                    expr: Some(e),
-                    ..
-                },
-                _,
-            )
-            | ExprKind::Ret(Some(e)) => expr = e,
-            ExprKind::Block(
-                &Block {
-                    stmts: [stmt],
-                    expr: None,
-                    ..
-                },
-                _,
-            ) => {
-                if let StmtKind::Semi(e) | StmtKind::Expr(e) = stmt.kind
-                    && let ExprKind::Ret(Some(ret_val)) = e.kind
-                {
-                    expr = ret_val;
-                } else {
-                    return false;
-                }
-            },
-            _ => return check_pat(cx, param.pat, expr),
-        }
-    }
-}
-
-/// This is the same as [`is_expr_identity_function`], but does not consider closures
-/// with type annotations for its bindings (or similar) as identity functions:
-/// * `|x: u8| x`
-/// * `std::convert::identity::<u8>`
-pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Closure(&Closure { body, fn_decl, .. })
-            if fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(()))) =>
-        {
-            is_body_identity_function(cx, cx.tcx.hir_body(body))
-        },
-        ExprKind::Path(QPath::Resolved(_, path))
-            if path.segments.iter().all(|seg| seg.infer_args)
-                && let Some(did) = path.res.opt_def_id() =>
-        {
-            cx.tcx.is_diagnostic_item(sym::convert_identity, did)
-        },
-        _ => false,
-    }
-}
-
-/// Checks if an expression represents the identity function
-/// Only examines closures and `std::convert::identity`
-///
-/// NOTE: If you want to use this function to find out if a closure is unnecessary, you likely want
-/// to call [`is_expr_untyped_identity_function`] instead, which makes sure that the closure doesn't
-/// have type annotations. This is important because removing a closure with bindings can
-/// remove type information that helped type inference before, which can then lead to compile
-/// errors.
-pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir_body(body)),
-        _ => path_def_id(cx, expr).is_some_and(|id| cx.tcx.is_diagnostic_item(sym::convert_identity, id)),
-    }
 }
 
 /// Gets the node where an expression is either used, or it's type is unified with another branch.

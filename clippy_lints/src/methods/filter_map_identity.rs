@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_expr_identity_function, is_expr_untyped_identity_function, is_trait_method};
+use clippy_utils::{MapFunc, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
@@ -9,10 +9,10 @@ use rustc_span::{Span, sym};
 use super::FILTER_MAP_IDENTITY;
 
 fn is_identity(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Applicability> {
-    if is_expr_untyped_identity_function(cx, expr) {
+    if MapFunc::from(expr).is_expr_untyped_identity_function(cx) {
         return Some(Applicability::MachineApplicable);
     }
-    if is_expr_identity_function(cx, expr) {
+    if MapFunc::from(expr).is_expr_identity_function(cx) {
         return Some(Applicability::Unspecified);
     }
     None
