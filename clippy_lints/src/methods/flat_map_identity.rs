@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_expr_untyped_identity_function, is_trait_method};
+use clippy_utils::{MapFunc, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     flat_map_arg: &'tcx hir::Expr<'_>,
     flat_map_span: Span,
 ) {
-    if is_trait_method(cx, expr, sym::Iterator) && is_expr_untyped_identity_function(cx, flat_map_arg) {
+    if is_trait_method(cx, expr, sym::Iterator) && MapFunc::from(flat_map_arg).is_expr_untyped_identity_function(cx) {
         span_lint_and_sugg(
             cx,
             FLAT_MAP_IDENTITY,

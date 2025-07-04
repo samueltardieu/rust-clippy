@@ -1,13 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{get_parent_expr, sym};
+use clippy_utils::{MapFunc, get_parent_expr, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{BinOpKind, Closure, Expr, ExprKind, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{Span, Symbol};
@@ -112,50 +111,6 @@ impl TryFrom<BinOpKind> for Op {
     }
 }
 
-/// Represents the argument of the `.map()` function, as a closure or as a path
-/// in case η-reduction is used.
-enum MapFunc<'hir> {
-    Closure(&'hir Closure<'hir>),
-    Path(&'hir Expr<'hir>),
-}
-
-impl<'hir> TryFrom<&'hir Expr<'hir>> for MapFunc<'hir> {
-    type Error = ();
-
-    fn try_from(expr: &'hir Expr<'hir>) -> Result<Self, Self::Error> {
-        match expr.kind {
-            ExprKind::Closure(closure) => Ok(Self::Closure(closure)),
-            ExprKind::Path(_) => Ok(Self::Path(expr)),
-            _ => Err(()),
-        }
-    }
-}
-
-impl<'hir> MapFunc<'hir> {
-    /// Build a suggestion suitable for use in a `.map()`-like function. η-expansion will be applied
-    /// as needed.
-    fn sugg(self, cx: &LateContext<'hir>, invert: bool, app: &mut Applicability) -> String {
-        match self {
-            Self::Closure(closure) => {
-                let body = Sugg::hir_with_applicability(cx, cx.tcx.hir_body(closure.body).value, "..", app);
-                format!(
-                    "{} {}",
-                    snippet_with_applicability(cx, closure.fn_decl_span, "|..|", app),
-                    if invert { !body } else { body }
-                )
-            },
-            Self::Path(expr) => {
-                let path = snippet_with_applicability(cx, expr.span, "_", app);
-                if invert {
-                    format!("|x| !{path}(x)")
-                } else {
-                    path.to_string()
-                }
-            },
-        }
-    }
-}
-
 fn emit_lint<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
@@ -174,19 +129,20 @@ fn emit_lint<'tcx>(
         (Flavor::Result, Op::Eq) => (false, "is_ok_and", !in_some_or_ok),
         (Flavor::Result, Op::Ne) => (true, "is_ok_and", !in_some_or_ok),
     };
-    span_lint_and_sugg(
-        cx,
-        MANUAL_IS_VARIANT_AND,
-        span,
-        format!("called `.map() {op} {pos}()`", pos = flavor.positive(),),
-        "use",
-        format!(
-            "{inversion}{recv}.{method}({body})",
-            inversion = if invert_expr { "!" } else { "" },
-            body = map_func.sugg(cx, invert_body, &mut app),
-        ),
-        app,
-    );
+    if let Some(body) = map_func.boolean_sugg(cx, invert_body, &mut app) {
+        span_lint_and_sugg(
+            cx,
+            MANUAL_IS_VARIANT_AND,
+            span,
+            format!("called `.map() {op} {pos}()`", pos = flavor.positive(),),
+            "use",
+            format!(
+                "{inversion}{recv}.{method}({body})",
+                inversion = if invert_expr { "!" } else { "" },
+            ),
+            app,
+        );
+    }
 }
 
 pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -209,9 +165,16 @@ pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     && args.type_at(0).is_bool()
                     && let ExprKind::MethodCall(_, recv, [map_expr], _) = expr2.kind
                     && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), flavor.symbol())
-                    && let Ok(map_func) = MapFunc::try_from(map_expr)
                 {
-                    return emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv);
+                    return emit_lint(
+                        cx,
+                        parent_expr.span,
+                        op,
+                        flavor,
+                        bool_cst,
+                        MapFunc::from(map_expr),
+                        recv,
+                    );
                 }
             }
         }
