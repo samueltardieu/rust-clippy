@@ -1,6 +1,6 @@
 //@aux-build:proc_macro_attr.rs
+#![warn(clippy::duplicated_attributes, clippy::duplicated_attributes)] //~ ERROR: duplicated attribute
 #![feature(rustc_attrs)]
-#![warn(clippy::duplicated_attributes)]
 #![cfg(any(unix, windows))]
 #![allow(dead_code)]
 #![allow(dead_code)] //~ ERROR: duplicated attribute
@@ -30,5 +30,9 @@ fn babar() {}
 #[allow(missing_docs, reason = "library for internal use only")]
 #[allow(exported_private_dependencies, reason = "library for internal use only")]
 fn duplicate_reason() {}
+
+#[clippy::cognitive_complexity = "10"]
+#[clippy::cognitive_complexity = "10"] //~ duplicated_attributes
+fn multiple_attribute_with_values() {}
 
 fn main() {}
