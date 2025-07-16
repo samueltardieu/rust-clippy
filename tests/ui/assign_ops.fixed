@@ -98,7 +98,7 @@ mod issue14871 {
             let mut count = 0;
             while count < value {
                 res = res + Self::ONE;
-                count += 1;
+                count = count + 1;
             }
             res
         }
