@@ -8,7 +8,7 @@ LL | |     fn second() {}
 LL | | }
    | |_^
    |
-note: first implementation here
+note: another implementation can be found here
   --> tests/ui/impl.rs:6:1
    |
 LL | / impl MyStruct {
@@ -28,7 +28,7 @@ LL | |         fn third() {}
 LL | |     }
    | |_____^
    |
-note: first implementation here
+note: another implementation can be found here
   --> tests/ui/impl.rs:6:1
    |
 LL | / impl MyStruct {
@@ -46,7 +46,7 @@ LL | |     fn f3() {}
 LL | | }
    | |_^
    |
-note: first implementation here
+note: another implementation can be found here
   --> tests/ui/impl.rs:45:1
    |
 LL | / impl WithArgs<u64> {
@@ -57,14 +57,26 @@ LL | | }
 error: multiple implementations of this structure
   --> tests/ui/impl.rs:71:1
    |
-LL | impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
+LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first implementation here
+note: another implementation can be found here
   --> tests/ui/impl.rs:68:1
    |
 LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:84:1
+   |
+LL | impl OneExpected {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+note: another implementation can be found here
+  --> tests/ui/impl.rs:81:1
+   |
+LL | impl OneExpected {}
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
