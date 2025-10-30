@@ -70,3 +70,29 @@ fn main() {
     let bb: Box<u32>;
     bb = Default::default();
 }
+
+fn issue15951() {
+    struct Foo {
+        inner: String,
+    }
+
+    fn embedded_body() {
+        let mut x = Box::new(());
+        let y = x;
+        x = Box::new(());
+
+        let mut x = Box::new(Foo { inner: String::new() });
+        let y = x.inner;
+        x = Box::new(Foo { inner: String::new() });
+        //~^ replace_box
+    }
+
+    let mut x = Box::new(Foo { inner: String::new() });
+    let in_closure = || {
+        x = Box::new(Foo { inner: String::new() });
+        //~^ replace_box
+    };
+}
+
+static R: fn(&mut Box<String>) = |x| *x = Box::new(String::new());
+//~^ replace_box

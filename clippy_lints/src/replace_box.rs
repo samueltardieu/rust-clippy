@@ -4,9 +4,12 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_default_equivalent_call, local_is_initialized};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
+use rustc_hir::{Body, Expr, ExprKind, HirId, HirIdSet, LangItem, Node, QPath};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_middle::mir::FakeReadCause;
+use rustc_middle::ty;
+use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -33,16 +36,52 @@ declare_clippy_lint! {
     perf,
     "assigning a newly created box to `Box<T>` is inefficient"
 }
-declare_lint_pass!(ReplaceBox => [REPLACE_BOX]);
+
+#[derive(Default)]
+pub struct ReplaceBox {
+    // Stack of caches for moved vars. The latest entry is the
+    // body being currently visited.
+    moved_vars_caches: Vec<Option<HirIdSet>>,
+}
+
+impl ReplaceBox {
+    fn current_moved_vars_cache(&mut self) -> &mut Option<HirIdSet> {
+        self.moved_vars_caches.last_mut().unwrap()
+    }
+}
+
+impl_lint_pass!(ReplaceBox => [REPLACE_BOX]);
 
 impl LateLintPass<'_> for ReplaceBox {
+    fn check_body(&mut self, _: &LateContext<'_>, _: &Body<'_>) {
+        self.moved_vars_caches.push(None);
+    }
+
+    fn check_body_post(&mut self, _: &LateContext<'_>, _: &Body<'_>) {
+        _ = self.moved_vars_caches.pop();
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Assign(lhs, rhs, _) = &expr.kind
             && !lhs.span.from_expansion()
             && !rhs.span.from_expansion()
             && let lhs_ty = cx.typeck_results().expr_ty(lhs)
             // No diagnostic for late-initialized locals
-            && lhs.res_local_id().is_none_or(|local| local_is_initialized(cx, local))
+            && let local = lhs.res_local_id()
+            && local.is_none_or(|local| {
+                local_is_initialized(cx, local)
+                    && !self.current_moved_vars_cache().get_or_insert_with(|| {
+                        let body_id = cx.enclosing_body.unwrap();
+                        let mut ctx = MovedVariablesCtxt {
+                            cx,
+                            moved_vars: HirIdSet::default(),
+                        };
+                        ExprUseVisitor::for_clippy(cx, cx.tcx.hir_body_owner_def_id(body_id), &mut ctx)
+                            .consume_body(cx.tcx.hir_body(body_id))
+                            .into_ok();
+                            ctx.moved_vars
+                    }).contains(&local)
+            })
             && let Some(inner_ty) = lhs_ty.boxed_ty()
         {
             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
@@ -108,4 +147,28 @@ fn get_box_new_payload<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<
     } else {
         None
     }
+}
+
+struct MovedVariablesCtxt<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    moved_vars: HirIdSet,
+}
+
+impl<'tcx> Delegate<'tcx> for MovedVariablesCtxt<'_, 'tcx> {
+    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
+        if let PlaceBase::Local(vid) = cmt.place.base
+            && let Node::Expr(expr) = self.cx.tcx.hir_node(cmt.hir_id)
+            && expr.res_local_id().is_some_and(|hir_id| hir_id == vid)
+        {
+            self.moved_vars.insert(vid);
+        }
+    }
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
