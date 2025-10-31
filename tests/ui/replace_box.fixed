@@ -96,3 +96,43 @@ fn issue15951() {
 
 static R: fn(&mut Box<String>) = |x| **x = String::new();
 //~^ replace_box
+
+fn field() {
+    struct T {
+        content: String,
+    }
+
+    impl T {
+        fn new() -> Self {
+            Self { content: String::new() }
+        }
+    }
+
+    struct S {
+        b: Box<T>,
+    }
+
+    let mut s = S { b: Box::new(T::new()) };
+    let _b = s.b;
+    s.b = Box::new(T::new());
+
+    // Interestingly, the lint and fix are valid here as `s.b` is not really moved
+    let mut s = S { b: Box::new(T::new()) };
+    _ = s.b;
+    *s.b = T::new();
+    //~^ replace_box
+
+    let mut s = S { b: Box::new(T::new()) };
+    *s.b = T::new();
+    //~^ replace_box
+
+    struct Q(Box<T>);
+    let mut q = Q(Box::new(T::new()));
+    let _b = q.0;
+    q.0 = Box::new(T::new());
+
+    let mut q = Q(Box::new(T::new()));
+    _ = q.0;
+    *q.0 = T::new();
+    //~^ replace_box
+}
