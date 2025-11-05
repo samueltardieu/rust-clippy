@@ -2,6 +2,7 @@ name: Clippy Test (merge queue)
 
 on:
   merge_group:
+  pull_request:
 
 env:
   RUST_BACKTRACE: 1
@@ -25,6 +26,8 @@ jobs:
           host: i686-unknown-linux-gnu
         - os: windows-latest
           host: x86_64-pc-windows-msvc
+        - os: windows-latest
+          host: aarch64-pc-windows-msvc
         - os: macos-latest
           host: aarch64-apple-darwin
 
