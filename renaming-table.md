@@ -18,7 +18,11 @@ The RFC 0344 guidelines for lint naming state:
 
 ## Proposed Renames
 
-Total lints analyzed: 47
+Out of 791 total Clippy lints analyzed, 47 lints were identified as not following RFC 0344 guidelines:
+
+- **33 lints** use 'needless' instead of 'unnecessary'
+- **9 lints** use 'useless' instead of 'unused'
+- **5 lints** have redundant '_items' suffix
 
 | Current Name | Proposed Name | Reason |
 |--------------|---------------|--------|
@@ -70,9 +74,55 @@ Total lints analyzed: 47
 | `USELESS_TRANSMUTE` | `UNUSED_TRANSMUTE` | Uses 'useless' instead of 'unused' (guideline 4) |
 | `USELESS_VEC` | `UNUSED_VEC` | Uses 'useless' instead of 'unused' (guideline 4) |
 
+## Rationale
+
+### Why 'needless' should be 'unnecessary'
+
+The RFC 0344 guidelines don't mention "needless" as a standard term. The guidelines specify:
+- Use "unused" for things that are not used (e.g., `unused_imports`, `unused_variables`)
+- The term "unnecessary" is more standard in technical writing
+
+For example, `#[allow(unnecessary_borrow)]` reads better than `#[allow(needless_borrow)]`.
+
+### Why 'useless' should be 'unused'
+
+Per guideline 4, lints that catch "unnecessary, unused, or useless aspects of code should use the term `unused`". The term "useless" is colloquial and less precise than "unused".
+
+### Why '_items' suffix should be removed
+
+Per guideline 2, lints that apply to arbitrary items should just mention what they check for, keeping lint names short. For example, use `deprecated` rather than `deprecated_items`, as `#[allow(deprecated)]` items already reads correctly.
+
+## Examples
+
+Before:
+```rust
+#[allow(needless_borrow)]
+fn foo(x: &str) { ... }
+
+#[allow(useless_conversion)]
+let x: i32 = x.into();
+
+#[allow(missing_docs_in_private_items)]
+fn internal() { ... }
+```
+
+After:
+```rust
+#[allow(unnecessary_borrow)]
+fn foo(x: &str) { ... }
+
+#[allow(unused_conversion)]
+let x: i32 = x.into();
+
+#[allow(missing_docs_in_private)]
+fn internal() { ... }
+```
+
 ## Implementation Notes
 
 - These are proposed renames only and require community discussion
 - Actual implementation would require updating lint declarations, tests, and documentation
-- Old lint names should be deprecated with clear migration paths
-- Consider using lint group aliases to maintain backward compatibility
+- Old lint names should be deprecated with clear migration paths to avoid breaking existing code
+- Consider using lint group aliases to maintain backward compatibility during transition period
+- Update all documentation, including the Clippy book and online lint list
+- Ensure rustfix suggestions work correctly with renamed lints
