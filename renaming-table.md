@@ -8,7 +8,7 @@ The RFC 0344 guidelines for lint naming state:
 
 1. **State the bad thing**: Lint names should state the bad thing being checked for (e.g., `deprecated`), so that `#[allow(deprecated)]` reads correctly.
 
-2. **Avoid redundant suffixes**: Lints that apply to arbitrary items should just mention what they check for (e.g., use `deprecated` rather than `deprecated_items`).
+2. **Avoid redundant suffixes**: Lints that apply to arbitrary items should just mention what they check for (e.g., use `deprecated` rather than `deprecated_items`). However, when removing a suffix would leave an adjective without a noun (e.g., `private_items` → `private`), the suffix should be retained for clarity.
 
 3. **Use plural for specific classes**: If a lint applies to a specific grammatical class, mention that class and use the plural form (e.g., `unused_variables` rather than `unused_variable`).
 
@@ -30,20 +30,24 @@ Per guideline 3, pluralization is required when the lint applies to a specific g
 - ✅ `dbg_macro` - refers to a macro pattern, not multiple macros
 - ✅ `blocks_in_conditions` - already plural
 
+### Suffix Removal Considerations
+
+When considering removing suffixes like `_items`, it's important to ensure the resulting name is grammatically complete. Adjectives require nouns:
+- ❌ `missing_docs_in_private` - 'private' is an adjective without a noun
+- ✅ `missing_docs_in_private_items` - grammatically complete
+- ✅ `doc_overindented_list` - 'list' is a noun, can remove '_items'
+
 ## Proposed Renames
 
-Out of 791 total Clippy lints analyzed, 47 lints were identified as not following RFC 0344 guidelines:
+Out of 791 total Clippy lints analyzed, 44 lints were identified as not following RFC 0344 guidelines:
 
 - **33 lints** use 'needless' instead of 'unnecessary'
 - **9 lints** use 'useless' instead of 'unused'
-- **5 lints** have redundant '_items' suffix
+- **2 lints** have redundant '_items' suffix (where removal leaves a complete noun)
 
 | Current Name | Proposed Name | Reason |
 |--------------|---------------|--------|
 | `DOC_OVERINDENTED_LIST_ITEMS` | `DOC_OVERINDENTED_LIST` | Has redundant suffix '_items' (guideline 2) |
-| `ITER_ON_SINGLE_ITEMS` | `ITER_ON_SINGLE` | Has redundant suffix '_items' (guideline 2) |
-| `MISSING_DOCS_IN_PRIVATE_ITEMS` | `MISSING_DOCS_IN_PRIVATE` | Has redundant suffix '_items' (guideline 2) |
-| `MISSING_INLINE_IN_PUBLIC_ITEMS` | `MISSING_INLINE_IN_PUBLIC` | Has redundant suffix '_items' (guideline 2) |
 | `NEEDLESS_ARBITRARY_SELF_TYPE` | `UNNECESSARY_ARBITRARY_SELF_TYPE` | Uses 'needless' instead of 'unnecessary' |
 | `NEEDLESS_AS_BYTES` | `UNNECESSARY_AS_BYTES` | Uses 'needless' instead of 'unnecessary' |
 | `NEEDLESS_BITWISE_BOOL` | `UNNECESSARY_BITWISE_BOOL` | Uses 'needless' instead of 'unnecessary' |
@@ -120,9 +124,11 @@ For example, `#[allow(unnecessary_borrow)]` reads better than `#[allow(needless_
 
 Per guideline 4, lints that catch "unnecessary, unused, or useless aspects of code should use the term `unused`". The term "useless" is colloquial and less precise than "unused".
 
-### Why '_items' suffix should be removed
+### Why some '_items' suffixes should be removed
 
 Per guideline 2, lints that apply to arbitrary items should just mention what they check for, keeping lint names short. For example, use `deprecated` rather than `deprecated_items`, as `#[allow(deprecated)]` items already reads correctly.
+
+However, the suffix must be retained when removing it would leave an adjective without a noun, such as `missing_docs_in_private_items` where "private" is an adjective modifying "items". Removing "_items" would result in `missing_docs_in_private`, which is grammatically incomplete.
 
 ## Examples
 
@@ -134,8 +140,9 @@ fn foo(x: &str) { ... }
 #[allow(useless_conversion)]
 let x: i32 = x.into();
 
-#[allow(missing_docs_in_private_items)]
-fn internal() { ... }
+#[allow(doc_overindented_list_items)]
+/// - item
+fn documented() { ... }
 ```
 
 After:
@@ -146,8 +153,20 @@ fn foo(x: &str) { ... }
 #[allow(unused_conversion)]
 let x: i32 = x.into();
 
-#[allow(missing_docs_in_private)]
-fn internal() { ... }
+#[allow(doc_overindented_list)]  // 'list' is a noun
+/// - item
+fn documented() { ... }
+```
+
+But keep the suffix when needed:
+```rust
+// Keep: 'private' is an adjective that needs 'items'
+#[allow(missing_docs_in_private_items)]
+mod internal { }
+
+// Keep: 'public' is an adjective that needs 'items'
+#[allow(missing_inline_in_public_items)]
+pub fn api() { }
 ```
 
 ## Implementation Notes
