@@ -10,7 +10,7 @@ The RFC 0344 guidelines for lint naming state:
 
 2. **Avoid redundant suffixes**: Lints that apply to arbitrary items should just mention what they check for (e.g., use `deprecated` rather than `deprecated_items`). However, when removing a suffix would leave an adjective without a noun (e.g., `private_items` → `private`), the suffix should be retained for clarity.
 
-3. **Use plural for specific classes**: If a lint applies to a specific grammatical class, mention that class and use the plural form (e.g., `unused_variables` rather than `unused_variable`).
+3. **Use plural for specific classes**: If a lint applies to a specific grammatical class, mention that class and use the plural form (e.g., `unused_variables` rather than `unused_variable`). This applies when the lint checks multiple instances of a specific type of item (e.g., multiple boolean expressions, multiple conversions).
 
 4. **Prefer 'unused' terminology**: Lints that catch unnecessary, unused, or useless aspects of code should use the term `unused` (e.g., `unused_imports`, `unused_typecasts`).
 
@@ -20,15 +20,16 @@ The RFC 0344 guidelines for lint naming state:
 
 ### Plural Form Usage
 
-The analysis respects that some lint names are appropriately singular when they:
-- Refer to a concept or pattern rather than specific instances (e.g., `dbg_macro`)
-- Apply to arbitrary items without specifying a grammatical class
-- Are already plural in their base form (e.g., `blocks_in_conditions`)
+Per guideline 3, pluralization is required when the lint checks multiple instances of a specific grammatical class. Examples:
+- ✅ `unused_variables` - checks multiple variable declarations
+- ✅ `unnecessary_bools` - checks multiple boolean expressions/if-statements
+- ✅ `unused_conversions` - checks multiple conversion calls
+- ✅ `dbg_macro` - refers to a macro pattern/concept, appropriately singular
+- ✅ `bool_comparison` - refers to the comparison pattern itself, appropriately singular
 
-Per guideline 3, pluralization is required when the lint applies to a specific grammatical class. For example:
-- ✅ `unused_variables` - applies to the grammatical class of variables
-- ✅ `dbg_macro` - refers to a macro pattern, not multiple macros
-- ✅ `blocks_in_conditions` - already plural
+The key distinction:
+- Use **plural** when the lint finds and reports multiple instances in code (e.g., "found 3 unnecessary boolean expressions")
+- Use **singular** when the lint detects a pattern or concept (e.g., "this is a boolean comparison pattern")
 
 ### Suffix Removal Considerations
 
@@ -39,19 +40,22 @@ When considering removing suffixes like `_items`, it's important to ensure the r
 
 ## Proposed Renames
 
-Out of 791 total Clippy lints analyzed, 44 lints were identified as not following RFC 0344 guidelines:
+Out of 791 total Clippy lints analyzed, 45 lints were identified as not following RFC 0344 guidelines:
 
 - **33 lints** use 'needless' instead of 'unnecessary'
 - **9 lints** use 'useless' instead of 'unused'
 - **2 lints** have redundant '_items' suffix (where removal leaves a complete noun)
+- **5 lints** should use plural form for specific grammatical classes
+
+Note: Some lints have multiple issues (e.g., `NEEDLESS_BOOL` → `UNNECESSARY_BOOLS` addresses both 'needless' and pluralization), so categories overlap.
 
 | Current Name | Proposed Name | Reason |
 |--------------|---------------|--------|
 | `DOC_OVERINDENTED_LIST_ITEMS` | `DOC_OVERINDENTED_LIST` | Has redundant suffix '_items' (guideline 2) |
 | `NEEDLESS_ARBITRARY_SELF_TYPE` | `UNNECESSARY_ARBITRARY_SELF_TYPE` | Uses 'needless' instead of 'unnecessary' |
 | `NEEDLESS_AS_BYTES` | `UNNECESSARY_AS_BYTES` | Uses 'needless' instead of 'unnecessary' |
-| `NEEDLESS_BITWISE_BOOL` | `UNNECESSARY_BITWISE_BOOL` | Uses 'needless' instead of 'unnecessary' |
-| `NEEDLESS_BOOL` | `UNNECESSARY_BOOL` | Uses 'needless' instead of 'unnecessary' |
+| `NEEDLESS_BITWISE_BOOL` | `UNNECESSARY_BITWISE_BOOLS` | Uses 'needless' instead of 'unnecessary'; should use plural form (checks multiple boolean expressions) |
+| `NEEDLESS_BOOL` | `UNNECESSARY_BOOLS` | Uses 'needless' instead of 'unnecessary'; should use plural form (checks multiple if-statements with booleans) |
 | `NEEDLESS_BOOL_ASSIGN` | `UNNECESSARY_BOOL_ASSIGN` | Uses 'needless' instead of 'unnecessary' |
 | `NEEDLESS_BORROW` | `UNNECESSARY_BORROW` | Uses 'needless' instead of 'unnecessary' |
 | `NEEDLESS_BORROWED_REFERENCE` | `UNNECESSARY_BORROWED_REFERENCE` | Uses 'needless' instead of 'unnecessary' |
@@ -81,11 +85,12 @@ Out of 791 total Clippy lints analyzed, 44 lints were identified as not followin
 | `NEEDLESS_RETURN_WITH_QUESTION_MARK` | `UNNECESSARY_RETURN_WITH_QUESTION_MARK` | Uses 'needless' instead of 'unnecessary' |
 | `NEEDLESS_SPLITN` | `UNNECESSARY_SPLITN` | Uses 'needless' instead of 'unnecessary' |
 | `NEEDLESS_UPDATE` | `UNNECESSARY_UPDATE` | Uses 'needless' instead of 'unnecessary' |
+| `NONMINIMAL_BOOL` | `NONMINIMAL_BOOLS` | Should use plural form (guideline 3) - checks multiple boolean expressions |
 | `USED_UNDERSCORE_ITEMS` | `USED_UNDERSCORE` | Has redundant suffix '_items' (guideline 2) |
 | `USELESS_ASREF` | `UNUSED_ASREF` | Uses 'useless' instead of 'unused' (guideline 4) |
-| `USELESS_ATTRIBUTE` | `UNUSED_ATTRIBUTE` | Uses 'useless' instead of 'unused' (guideline 4) |
+| `USELESS_ATTRIBUTE` | `UNUSED_ATTRIBUTES` | Uses 'useless' instead of 'unused' (guideline 4); should use plural form (checks multiple attributes) |
 | `USELESS_CONCAT` | `UNUSED_CONCAT` | Uses 'useless' instead of 'unused' (guideline 4) |
-| `USELESS_CONVERSION` | `UNUSED_CONVERSION` | Uses 'useless' instead of 'unused' (guideline 4) |
+| `USELESS_CONVERSION` | `UNUSED_CONVERSIONS` | Uses 'useless' instead of 'unused' (guideline 4); should use plural form (checks multiple conversion calls) |
 | `USELESS_FORMAT` | `UNUSED_FORMAT` | Uses 'useless' instead of 'unused' (guideline 4) |
 | `USELESS_LET_IF_SEQ` | `UNUSED_LET_IF_SEQ` | Uses 'useless' instead of 'unused' (guideline 4) |
 | `USELESS_NONZERO_NEW_UNCHECKED` | `UNUSED_NONZERO_NEW_UNCHECKED` | Uses 'useless' instead of 'unused' (guideline 4) |
@@ -103,7 +108,7 @@ The following lints may have names that don't clearly state the bad thing being 
 | `USE_DEBUG` | Usage of Debug formatting in user-facing output | Name suggests positive action, bad thing is inappropriate Debug formatting | Consider `DEBUG_IN_USER_OUTPUT` or `INAPPROPRIATE_DEBUG_FMT` |
 | `USE_SELF` | Unnecessary repetition of struct name instead of `Self` | Name suggests positive action, bad thing is unnecessary type repetition | Consider `UNNECESSARY_STRUCT_NAME` or `MISSING_SELF_USAGE` |
 
-**Note**: These suggestions aim to better align with guideline 1 (state the bad thing) while maintaining clarity about what the lint checks for. The current names either suggest positive actions or contain confusing terminology.
+**Note**: These suggestions aim to better align with guideline 1 (state the bad thing) while maintaining clarity about what the lint checks for.
 
 
 ## Rationale
@@ -118,26 +123,33 @@ The distinction is subtle:
 - "unused" = something that exists but is never used (e.g., an import that's never referenced)
 - "unnecessary" = something that can be removed or simplified without changing behavior (e.g., an unnecessary borrow, an unnecessary return statement)
 
-For example, `#[allow(unnecessary_borrow)]` reads better than `#[allow(needless_borrow)]` and is more precise: the borrow exists and may be used, but it's not necessary.
+For example, `#[allow(unnecessary_borrow)]` reads better than `#[allow(needless_borrow)]`.
 
 ### Why 'useless' should be 'unused'
 
 Per guideline 4, lints that catch "unnecessary, unused, or useless aspects of code should use the term `unused`". The term "useless" is colloquial and less precise than "unused".
 
+### Why plural forms matter
+
+Per guideline 3, when a lint checks multiple instances of a specific grammatical class, it should use the plural form. This makes `#[allow(unnecessary_bools)]` read correctly as "allow unnecessary bools" when the lint checks for multiple boolean expressions or if-statements with boolean values.
+
+Examples:
+- `NEEDLESS_BOOL` checks "if-statements with plain booleans" → `UNNECESSARY_BOOLS`
+- `USELESS_CONVERSION` checks "calls to Into/From" → `UNUSED_CONVERSIONS`
+- `USELESS_ATTRIBUTE` checks "lint attributes" → `UNUSED_ATTRIBUTES`
+
 ### Why some '_items' suffixes should be removed
 
-Per guideline 2, lints that apply to arbitrary items should just mention what they check for, keeping lint names short. For example, use `deprecated` rather than `deprecated_items`, as `#[allow(deprecated)]` items already reads correctly.
-
-However, the suffix must be retained when removing it would leave an adjective without a noun, such as `missing_docs_in_private_items` where "private" is an adjective modifying "items". Removing "_items" would result in `missing_docs_in_private`, which is grammatically incomplete.
+Per guideline 2, lints that apply to arbitrary items should just mention what they check for, keeping lint names short. However, the suffix must be retained when removing it would leave an adjective without a noun.
 
 ## Examples
 
 Before:
 ```rust
-#[allow(needless_borrow)]
-fn foo(x: &str) { ... }
+#[allow(needless_bool)]  // Checks multiple if-statements
+if x { true } else { false }
 
-#[allow(useless_conversion)]
+#[allow(useless_conversion)]  // Checks multiple conversion calls
 let x: i32 = x.into();
 
 #[allow(doc_overindented_list_items)]
@@ -147,26 +159,22 @@ fn documented() { ... }
 
 After:
 ```rust
-#[allow(unnecessary_borrow)]
-fn foo(x: &str) { ... }
+#[allow(unnecessary_bools)]  // Plural: checks multiple if-statements
+if x { true } else { false }
 
-#[allow(unused_conversion)]
+#[allow(unused_conversions)]  // Plural: checks multiple calls
 let x: i32 = x.into();
 
-#[allow(doc_overindented_list)]  // 'list' is a noun
+#[allow(doc_overindented_list)]  // 'list' is a noun, suffix removed
 /// - item
 fn documented() { ... }
 ```
 
-But keep the suffix when needed:
+Keep the suffix when needed:
 ```rust
 // Keep: 'private' is an adjective that needs 'items'
 #[allow(missing_docs_in_private_items)]
 mod internal { }
-
-// Keep: 'public' is an adjective that needs 'items'
-#[allow(missing_inline_in_public_items)]
-pub fn api() { }
 ```
 
 ## Implementation Notes
