@@ -16,6 +16,20 @@ The RFC 0344 guidelines for lint naming state:
 
 5. **Use snake_case**: Use snake case consistently, as you would for function names.
 
+## Analysis Notes
+
+### Plural Form Usage
+
+The analysis respects that some lint names are appropriately singular when they:
+- Refer to a concept or pattern rather than specific instances (e.g., `dbg_macro`)
+- Apply to arbitrary items without specifying a grammatical class
+- Are already plural in their base form (e.g., `blocks_in_conditions`)
+
+Per guideline 3, pluralization is required when the lint applies to a specific grammatical class. For example:
+- ✅ `unused_variables` - applies to the grammatical class of variables
+- ✅ `dbg_macro` - refers to a macro pattern, not multiple macros
+- ✅ `blocks_in_conditions` - already plural
+
 ## Proposed Renames
 
 Out of 791 total Clippy lints analyzed, 47 lints were identified as not following RFC 0344 guidelines:
@@ -73,6 +87,20 @@ Out of 791 total Clippy lints analyzed, 47 lints were identified as not followin
 | `USELESS_NONZERO_NEW_UNCHECKED` | `UNUSED_NONZERO_NEW_UNCHECKED` | Uses 'useless' instead of 'unused' (guideline 4) |
 | `USELESS_TRANSMUTE` | `UNUSED_TRANSMUTE` | Uses 'useless' instead of 'unused' (guideline 4) |
 | `USELESS_VEC` | `UNUSED_VEC` | Uses 'useless' instead of 'unused' (guideline 4) |
+
+## Lints Requiring Further Review
+
+The following lints may have names that don't clearly state the bad thing being checked for, or may be confusing:
+
+| Current Name | What it checks | Issue | Suggested Alternative |
+|--------------|----------------|-------|----------------------|
+| `ALLOW_ATTRIBUTES` | Usage of `#[allow]` instead of `#[expect]` | Name suggests allowing is bad, but the bad thing is missing expectations | Consider `MISSING_EXPECT_ATTRIBUTE` or `PREFER_EXPECT_OVER_ALLOW` |
+| `ALLOW_ATTRIBUTES_WITHOUT_REASON` | `#[allow]` attributes without a reason parameter | Name is confusing with nested "allow" | Consider `MISSING_ALLOW_REASON` or `UNDOCUMENTED_ALLOW` |
+| `USE_DEBUG` | Usage of Debug formatting in user-facing output | Name suggests positive action, bad thing is inappropriate Debug formatting | Consider `DEBUG_IN_USER_OUTPUT` or `INAPPROPRIATE_DEBUG_FMT` |
+| `USE_SELF` | Unnecessary repetition of struct name instead of `Self` | Name suggests positive action, bad thing is unnecessary type repetition | Consider `UNNECESSARY_STRUCT_NAME` or `MISSING_SELF_USAGE` |
+
+**Note**: These suggestions aim to better align with guideline 1 (state the bad thing) while maintaining clarity about what the lint checks for. The current names either suggest positive actions or contain confusing terminology.
+
 
 ## Rationale
 
