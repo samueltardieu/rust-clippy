@@ -80,9 +80,13 @@ Out of 791 total Clippy lints analyzed, 47 lints were identified as not followin
 
 The RFC 0344 guidelines don't mention "needless" as a standard term. The guidelines specify:
 - Use "unused" for things that are not used (e.g., `unused_imports`, `unused_variables`)
-- The term "unnecessary" is more standard in technical writing
+- The term "unnecessary" is more standard in technical writing for things that serve no purpose
 
-For example, `#[allow(unnecessary_borrow)]` reads better than `#[allow(needless_borrow)]`.
+The distinction is subtle:
+- "unused" = something that exists but is never used (e.g., an import that's never referenced)
+- "unnecessary" = something that can be removed or simplified without changing behavior (e.g., an unnecessary borrow, an unnecessary return statement)
+
+For example, `#[allow(unnecessary_borrow)]` reads better than `#[allow(needless_borrow)]` and is more precise: the borrow exists and may be used, but it's not necessary.
 
 ### Why 'useless' should be 'unused'
 
