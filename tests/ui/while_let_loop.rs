@@ -253,3 +253,13 @@ fn let_assign() {
         }
     }
 }
+
+fn issue16378() {
+    loop {
+        let Some(2) = std::hint::black_box(None) else {
+            // Must not lint because of the extra statement
+            println!("fail");
+            break;
+        };
+    }
+}
