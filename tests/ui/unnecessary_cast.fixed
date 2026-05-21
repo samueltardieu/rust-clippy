@@ -1,13 +1,13 @@
 //@aux-build:extern_fake_libc.rs
 #![warn(clippy::unnecessary_cast)]
-#![allow(
+#![expect(
+    nonstandard_style,
+    unused,
     clippy::borrow_as_ptr,
     clippy::multiple_bound_locations,
     clippy::no_effect,
     clippy::nonstandard_macro_braces,
-    clippy::unnecessary_operation,
-    nonstandard_style,
-    unused
+    clippy::unnecessary_operation
 )]
 
 extern crate extern_fake_libc;
@@ -100,7 +100,6 @@ fn main() {
     // macro version
     macro_rules! foo {
         ($a:ident, $b:ident) => {
-            #[allow(unused)]
             pub fn $a() -> $b {
                 1 as $b
             }
@@ -167,7 +166,6 @@ fn main() {
 type I32Alias = i32;
 
 mod fixable {
-    #![allow(dead_code)]
 
     fn main() {
         // casting integer literal to float is unnecessary
