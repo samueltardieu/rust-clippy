@@ -7520,6 +7520,7 @@ Released 2018-09-13
 [`wildcard_enum_match_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
 [`wildcard_imports`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
 [`wildcard_in_or_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_in_or_patterns
+[`with_capacity_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#with_capacity_zero
 [`write_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_literal
 [`write_with_newline`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_with_newline
 [`writeln_empty_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#writeln_empty_string
@@ -7607,6 +7608,7 @@ Released 2018-09-13
 [`module-items-ordered-within-groupings`]: https://doc.rust-lang.org/clippy/lint_configuration.html#module-items-ordered-within-groupings
 [`msrv`]: https://doc.rust-lang.org/clippy/lint_configuration.html#msrv
 [`pass-by-value-size-limit`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pass-by-value-size-limit
+[`profiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#profiles
 [`pub-underscore-fields-behavior`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pub-underscore-fields-behavior
 [`recursive-self-in-type-definitions`]: https://doc.rust-lang.org/clippy/lint_configuration.html#recursive-self-in-type-definitions
 [`semicolon-inside-block-ignore-singleline`]: https://doc.rust-lang.org/clippy/lint_configuration.html#semicolon-inside-block-ignore-singleline

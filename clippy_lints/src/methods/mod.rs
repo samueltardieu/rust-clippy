@@ -28,7 +28,6 @@ mod filter_next;
 mod flat_map_identity;
 mod flat_map_option;
 mod format_collect;
-mod from_iter_instead_of_collect;
 mod get_first;
 mod get_last_with_len;
 mod get_unwrap;
@@ -894,47 +893,6 @@ declare_clippy_lint! {
     pub FORMAT_COLLECT,
     pedantic,
     "`format!`ing every element in a collection, then collecting the strings into a new `String`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `from_iter()` function calls on types that implement the `FromIterator`
-    /// trait.
-    ///
-    /// ### Why is this bad?
-    /// If it's needed to create a collection from the contents of an iterator, the `Iterator::collect(_)`
-    /// method is preferred. However, when it's needed to specify the container type,
-    /// `Vec::from_iter(_)` can be more readable than using a turbofish (e.g. `_.collect::<Vec<_>>()`). See
-    /// [FromIterator documentation](https://doc.rust-lang.org/std/iter/trait.FromIterator.html)
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let five_fives = std::iter::repeat(5).take(5);
-    ///
-    /// let v = Vec::from_iter(five_fives);
-    ///
-    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let five_fives = std::iter::repeat(5).take(5);
-    ///
-    /// let v: Vec<i32> = five_fives.collect();
-    ///
-    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
-    /// ```
-    /// but prefer to use
-    /// ```no_run
-    /// let numbers: Vec<i32> = FromIterator::from_iter(1..=5);
-    /// ```
-    /// instead of
-    /// ```no_run
-    /// let numbers = (1..=5).collect::<Vec<_>>();
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub FROM_ITER_INSTEAD_OF_COLLECT,
-    pedantic,
-    "use `.collect()` instead of `::from_iter()`"
 }
 
 declare_clippy_lint! {
@@ -1903,7 +1861,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where `f` is a function or closure that returns the `bool` type.
     ///
-    /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`.
+    /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`,
+    /// as well as `result.ok().is_some_and(f)`.
     ///
     /// ### Why is this bad?
     /// Readability. These can be written more concisely as `option.is_some_and(f)` and `result.is_ok_and(f)`.
@@ -1919,6 +1878,8 @@ declare_clippy_lint! {
     /// result.map(|a| a > 10) == Ok(true);
     /// option.map(|a| a > 10) != Some(true);
     /// result.map(|a| a > 10) != Ok(true);
+    ///
+    /// result.ok().is_some_and(|a| a > 10);
     /// ```
     /// Use instead:
     /// ```no_run
@@ -1931,6 +1892,8 @@ declare_clippy_lint! {
     /// result.is_ok_and(|a| a > 10);
     /// option.is_none_or(|a| a > 10);
     /// !result.is_ok_and(|a| a > 10);
+    ///
+    /// result.is_ok_and(|a| a > 10);
     /// ```
     #[clippy::version = "1.77.0"]
     pub MANUAL_IS_VARIANT_AND,
@@ -4895,7 +4858,6 @@ impl_lint_pass!(Methods => [
     FLAT_MAP_IDENTITY,
     FLAT_MAP_OPTION,
     FORMAT_COLLECT,
-    FROM_ITER_INSTEAD_OF_COLLECT,
     GET_FIRST,
     GET_LAST_WITH_LEN,
     GET_UNWRAP,
@@ -5099,7 +5061,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
         match expr.kind {
             ExprKind::Call(func, args) => {
-                from_iter_instead_of_collect::check(cx, expr, args, func);
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, self.msrv);
@@ -5499,6 +5460,7 @@ impl Methods {
                 (sym::is_digit, [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
                 (sym::is_none, []) => check_is_some_is_none(cx, expr, recv, call_span, false, self.msrv),
                 (sym::is_some, []) => check_is_some_is_none(cx, expr, recv, call_span, true, self.msrv),
+                (sym::is_some_and, [arg]) => manual_is_variant_and::check_ok_is_some_and(cx, expr, recv, arg),
                 (sym::iter | sym::iter_mut | sym::into_iter, []) => {
                     iter_on_single_or_empty_collections::check(cx, expr, name, recv);
                 },
