@@ -18,19 +18,34 @@ concurrency:
 
 jobs:
   base:
-    # NOTE: If you modify this job, make sure you copy the changes to clippy_mq.yml
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          host: x86_64-unknown-linux-gnu
+        - os: macos-latest
+          host: aarch64-apple-darwin
 
+    runs-on: ${{ matrix.os }}
+
+    # NOTE: If you modify this job, make sure you copy the changes to clippy.yml
     steps:
     # Setup
     - name: Checkout
       uses: actions/checkout@v6
       with:
-        # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
+
+    - name: Install i686 dependencies
+      if: matrix.host == 'i686-unknown-linux-gnu'
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install gcc-multilib zlib1g-dev:i386
 
     - name: Install toolchain
       run: |
+        rustup set default-host ${{ matrix.host }}
         # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
         rustup show active-toolchain || rustup toolchain install
 
@@ -39,7 +54,12 @@ jobs:
       run: cargo build --tests --features internal
 
     - name: Test
+      if: matrix.host == 'x86_64-unknown-linux-gnu'
       run: cargo test --features internal
+
+    - name: Test
+      if: matrix.host != 'x86_64-unknown-linux-gnu'
+      run: cargo test --features internal -- --skip dogfood
 
     - name: Test clippy_lints
       run: cargo test
@@ -48,6 +68,10 @@ jobs:
     - name: Test clippy_utils
       run: cargo test
       working-directory: clippy_utils
+
+    - name: Test clippy_config
+      run: cargo test
+      working-directory: clippy_config
 
     - name: Test rustc_tools_util
       run: cargo test
